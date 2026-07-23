@@ -4,18 +4,11 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": ".",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**",
-      "scripts/**",
-      "main.py",
-      "requirements.txt",
-      "AppDespesas.zip",
-      "*.md",
-      "firestore.rules",
-      "firestore.indexes.json"
+      "**/node_modules/**"
     ],
     "rewrites": [
       {
