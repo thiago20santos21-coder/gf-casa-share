@@ -97,6 +97,9 @@
     ['boot-screen', 'auth-screen', 'group-screen', 'app-shell'].forEach((id) => {
       $(id).classList.toggle('hidden', id !== name);
     });
+    try {
+      updateInstallUI();
+    } catch (_) {}
   }
   function initials(name) {
     return String(name || '?')
@@ -349,7 +352,10 @@
 
   /* ========== PIX / roles helpers ========== */
   function isCreator() {
-    return !!(currentGroup && currentUser && currentGroup.createdBy === currentUser.uid);
+    if (!currentGroup || !currentUser) return false;
+    const createdBy = String(currentGroup.createdBy || '');
+    const uid = String(currentUser.uid || '');
+    return !!createdBy && createdBy === uid;
   }
 
   function adminIds() {
@@ -776,13 +782,26 @@
     $('cfg-pix-key').value = (currentGroup.pix && currentGroup.pix.chave) || '';
     $('cfg-pix-name').value = (currentGroup.pix && currentGroup.pix.nome) || '';
     $('cfg-pix-city').value = (currentGroup.pix && currentGroup.pix.cidade) || '';
-    $('account-info').textContent =
-      (userProfile && userProfile.name ? userProfile.name + ' · ' : '') +
-      (currentUser.email || '') +
-      (isCreator() ? ' · Criador' : isAdmin() ? ' · Admin' : ' · Membro');
 
     const creator = isCreator();
     const admin = isAdmin();
+    const roleLabel = creator ? 'Criador' : admin ? 'Admin' : 'Membro';
+
+    $('account-info').textContent =
+      (userProfile && userProfile.name ? userProfile.name + ' · ' : '') +
+      (currentUser.email || '') +
+      ' · ' +
+      roleLabel;
+
+    const roleBanner = $('role-banner-text');
+    if (roleBanner) {
+      roleBanner.textContent = creator
+        ? 'Você é o CRIADOR: edita PIX, promove admins, remove membros e pode apagar o grupo.'
+        : admin
+          ? 'Você é ADMIN: pode remover membros e moderar conteúdo. PIX só o criador edita.'
+          : 'Você é MEMBRO: use despesas/compras/chat. Pode sair do grupo. PIX é só leitura.';
+    }
+
     $('pill-receiver').classList.toggle('hidden', !creator);
     $('receiver-banner').classList.toggle('show', creator);
 
@@ -792,19 +811,54 @@
     if (pixFields) pixFields.classList.toggle('pix-readonly', !creator);
     ['cfg-pix-key', 'cfg-pix-name', 'cfg-pix-city'].forEach((id) => {
       const el = $(id);
-      if (el) el.readOnly = !creator;
+      if (el) {
+        el.readOnly = !creator;
+        el.disabled = !creator;
+      }
     });
-    if (saveBtn) saveBtn.classList.toggle('hidden', !creator);
+    if (saveBtn) {
+      saveBtn.disabled = !creator;
+      saveBtn.style.display = 'inline-flex';
+      saveBtn.textContent = creator ? 'Salvar PIX' : 'Somente o criador salva PIX';
+    }
     if (pixHint) {
       pixHint.textContent = creator
         ? 'Somente você (criador) pode alterar a chave PIX.'
-        : 'Somente o criador pode editar o PIX. Você pode ver e usar ao gerar o pagamento.';
+        : 'PIX bloqueado para edição — somente o criador altera.';
     }
 
     const delBtn = $('btn-delete-group');
-    if (delBtn) delBtn.classList.toggle('hidden', !creator);
     const leaveBtn = $('btn-leave-group');
-    if (leaveBtn) leaveBtn.classList.toggle('hidden', creator);
+    const actionsHint = $('account-actions-hint');
+    if (delBtn) {
+      delBtn.disabled = !creator;
+      delBtn.style.opacity = creator ? '1' : '0.45';
+      delBtn.style.pointerEvents = creator ? 'auto' : 'none';
+    }
+    if (leaveBtn) {
+      leaveBtn.disabled = creator;
+      leaveBtn.style.opacity = creator ? '0.45' : '1';
+      leaveBtn.style.pointerEvents = creator ? 'none' : 'auto';
+    }
+    if (actionsHint) {
+      actionsHint.textContent = creator
+        ? 'Como criador, use Apagar grupo (não é possível “sair” sem apagar).'
+        : 'Use Sair deste grupo para deixar o espaço compartilhado.';
+    }
+
+    const membersHelp = $('members-help');
+    if (membersHelp) {
+      const others = (currentGroup.members || []).filter((m) => m.uid !== currentGroup.createdBy);
+      if (creator && others.length === 0) {
+        membersHelp.textContent = 'Convide alguém com o código acima. Depois aparecerão botões Tornar admin / Remover.';
+      } else if (creator) {
+        membersHelp.textContent = 'Botões por membro: Tornar admin, Remover admin, Remover do grupo.';
+      } else if (admin) {
+        membersHelp.textContent = 'Como admin, você pode Remover outros membros (exceto o criador).';
+      } else {
+        membersHelp.textContent = 'Somente criador/admin gerenciam a lista.';
+      }
+    }
 
     const list = $('members-list');
     list.innerHTML = '';
@@ -822,10 +876,10 @@
       if (!isRecv && creator) {
         actions += userIsAdmin
           ? `<button type="button" class="btn btn-ghost btn-sm act-demote">Remover admin</button>`
-          : `<button type="button" class="btn btn-ghost btn-sm act-promote">Tornar admin</button>`;
+          : `<button type="button" class="btn btn-primary btn-sm act-promote" style="width:auto;margin:0">Tornar admin</button>`;
       }
       if (!isRecv && admin && m.uid !== currentUser.uid) {
-        actions += `<button type="button" class="btn btn-danger btn-sm act-remove">Remover</button>`;
+        actions += `<button type="button" class="btn btn-danger btn-sm act-remove">Remover do grupo</button>`;
       }
 
       el.innerHTML = `<div class="avatar">${escapeHTML(initials(m.name))}</div>
@@ -849,12 +903,20 @@
   }
 
   async function setMemberAdmin(uid, makeAdmin) {
-    if (!isCreator() || !groupId) return;
-    const next = new Set(adminIds());
-    if (makeAdmin) next.add(uid);
-    else next.delete(uid);
-    await db.collection('groups').doc(groupId).update({ adminIds: Array.from(next) });
-    toast(makeAdmin ? 'Admin promovido' : 'Admin removido');
+    if (!isCreator() || !groupId) {
+      toast('Somente o criador promove admins');
+      return;
+    }
+    try {
+      const next = new Set(adminIds());
+      if (makeAdmin) next.add(uid);
+      else next.delete(uid);
+      await db.collection('groups').doc(groupId).update({ adminIds: Array.from(next) });
+      toast(makeAdmin ? 'Admin promovido' : 'Admin removido');
+    } catch (err) {
+      console.error(err);
+      toast(err.message || 'Falha ao atualizar admin (permissão/regras)');
+    }
   }
 
   async function removerMembro(m) {
@@ -1544,10 +1606,20 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-      .register('/sw.js')
-      .then(() => updateInstallUI())
+      .register('/sw.js?v=5', { updateViaCache: 'none' })
+      .then((reg) => {
+        reg.update().catch(() => {});
+        if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!sessionStorage.getItem('gf_sw_reloaded')) {
+            sessionStorage.setItem('gf_sw_reloaded', '1');
+            location.reload();
+          }
+        });
+        updateInstallUI();
+      })
       .catch(() => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+        navigator.serviceWorker.register('./sw.js?v=5', { updateViaCache: 'none' }).catch(() => {});
       });
   }
 

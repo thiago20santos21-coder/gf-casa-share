@@ -1,10 +1,12 @@
-/* GF Casa Share — Service Worker v4 */
-const CACHE_NAME = 'gf-casa-share-v4';
+/* GF Casa Share — Service Worker v5 (hard cache bust) */
+const CACHE_NAME = 'gf-casa-share-v5';
 const PRECACHE = [
   './',
   './index.html',
   './app.js',
+  './app.js?v=20260723e',
   './manifest.json',
+  './manifest.json?v=20260723e',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-192.png',
@@ -16,7 +18,7 @@ const PRECACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE))
+      .then((cache) => cache.addAll(PRECACHE.map((u) => u)).catch(() => cache.addAll(['./', './index.html', './app.js'])))
       .then(() => self.skipWaiting())
   );
 });
@@ -32,11 +34,17 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
   if (!url.protocol.startsWith('http')) return;
 
-  if (request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname.endsWith('app.js')) {
+  // Always network-first for app shell
+  if (
+    request.mode === 'navigate' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('index.html') ||
+    url.pathname.endsWith('app.js') ||
+    url.pathname.endsWith('sw.js')
+  ) {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -44,9 +52,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           return response;
         })
-        .catch(() =>
-          caches.match(request).then((r) => r || caches.match('./index.html'))
-        )
+        .catch(() => caches.match(request).then((r) => r || caches.match('./index.html')))
     );
     return;
   }
@@ -72,13 +78,13 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
       const cached = await cache.match(request);
-      const network = fetch(request)
-        .then((response) => {
-          if (response && response.ok) cache.put(request, response.clone());
-          return response;
-        })
-        .catch(() => cached);
-      return cached || network;
+      try {
+        const response = await fetch(request);
+        if (response && response.ok) cache.put(request, response.clone());
+        return response;
+      } catch (_) {
+        return cached;
+      }
     })
   );
 });
@@ -87,15 +93,14 @@ self.addEventListener('message', (event) => {
   const data = event.data || {};
   if (data.type === 'SKIP_WAITING') self.skipWaiting();
   if (data.type === 'NOTIFY') {
-    const { title, body, tag, url } = data;
     const icon = self.location.origin + '/icons/icon-192.png';
     event.waitUntil(
-      self.registration.showNotification(title || 'GF Casa Share', {
-        body: body || '',
-        tag: tag || 'gf-update',
+      self.registration.showNotification(data.title || 'GF Casa Share', {
+        body: data.body || '',
+        tag: data.tag || 'gf-update',
         icon,
         badge: icon,
-        data: { url: url || '/' },
+        data: { url: data.url || '/' },
         renotify: true
       })
     );
@@ -108,10 +113,7 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const client of list) {
-        if ('focus' in client) {
-          client.postMessage({ type: 'NOTIFICATION_CLICK', url: target });
-          return client.focus();
-        }
+        if ('focus' in client) return client.focus();
       }
       if (clients.openWindow) return clients.openWindow(target);
     })
@@ -122,11 +124,7 @@ self.addEventListener('push', (event) => {
   let payload = { title: 'GF Casa Share', body: 'Nova atualização no grupo' };
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
-  } catch (_) {
-    try {
-      payload.body = event.data.text();
-    } catch (__) {}
-  }
+  } catch (_) {}
   const icon = self.location.origin + '/icons/icon-192.png';
   event.waitUntil(
     self.registration.showNotification(payload.title, {

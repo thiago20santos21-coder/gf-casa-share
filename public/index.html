@@ -10,10 +10,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Casa Share">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json?v=20260723e">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=20260723e">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png?v=20260723e">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=20260723e">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -375,7 +375,7 @@
         </div>
       </div>
       <div class="topbar-actions">
-        <button class="btn btn-ghost btn-sm btn-install-top hidden" type="button" id="btn-install-header" title="Instalar app">Instalar</button>
+        <button class="btn btn-ghost btn-sm btn-install-top" type="button" id="btn-install-header" title="Instalar app">Instalar</button>
         <button class="btn btn-ghost btn-sm" type="button" id="btn-settings" title="Grupo">Grupo</button>
         <button class="btn btn-ghost btn-sm" type="button" id="btn-logout">Sair</button>
       </div>
@@ -462,18 +462,31 @@
       </section>
 
       <section class="page hidden" id="page-settings">
+        <div class="card" id="role-banner-card" style="border-color:rgba(61,154,139,.35)">
+          <h3 style="margin-bottom:.35rem">Seu papel neste grupo</h3>
+          <p class="hint" id="role-banner-text" style="margin:0;font-size:.95rem;color:var(--text)">Carregando…</p>
+          <p class="hint" id="role-banner-help" style="margin-top:.45rem">Abra esta aba (Grupo) para instalar o app, ativar notificações e gerenciar membros.</p>
+        </div>
+
         <div class="card" id="install-card">
           <h3>Instalar no celular</h3>
           <p class="hint" id="install-hint" style="margin-top:0">Adicione à tela inicial para abrir como aplicativo.</p>
           <div class="install-card-actions">
-            <button class="btn btn-primary btn-sm" type="button" id="btn-install-settings">Instalar app</button>
-            <button class="btn btn-ghost btn-sm" type="button" id="btn-install-howto">Como instalar</button>
+            <button class="btn btn-primary" type="button" id="btn-install-settings" style="width:auto;margin:0">Instalar app</button>
+            <button class="btn btn-ghost" type="button" id="btn-install-howto" style="width:auto;margin:0">Como instalar</button>
           </div>
           <ol class="install-steps hidden" id="install-howto">
-            <li id="install-step-1">No Chrome/Android: toque em Instalar app (ou menu ⋮ → Instalar app).</li>
-            <li id="install-step-2">No iPhone/iPad (Safari): Compartilhar → Adicionar à Tela de Início.</li>
-            <li>Depois abra pelo ícone Casa Share na tela inicial.</li>
+            <li id="install-step-1">Android/Chrome: toque em <strong>Instalar app</strong> ou menu ⋮ → Instalar app.</li>
+            <li id="install-step-2">iPhone/iPad (Safari): botão Compartilhar → <strong>Adicionar à Tela de Início</strong>.</li>
+            <li>Depois abra pelo ícone <strong>Casa Share</strong> na tela inicial.</li>
           </ol>
+        </div>
+
+        <div class="card">
+          <h3>Notificações</h3>
+          <p class="hint" style="margin-top:0">Receba alertas de chat, despesas, compras e PIX neste aparelho.</p>
+          <button class="btn btn-primary" style="width:100%;margin-top:.6rem" type="button" id="btn-enable-notifs">Ativar notificações</button>
+          <div class="hint" id="notif-status" style="margin-top:.5rem">Toque no botão acima para permitir alertas.</div>
         </div>
 
         <div class="card">
@@ -488,11 +501,12 @@
           <div class="roles-box" id="roles-help">
             <strong>Papéis:</strong>
             Criador — PIX, admins, remover membros, apagar grupo.
-            Admin — remover membros e moderar (apagar despesas/compras/msgs de outros).
-            Membro — usar o app; não edita PIX.
+            Admin — remover membros e moderar conteúdo.
+            Membro — usar o app e sair do grupo; não edita PIX.
           </div>
 
-          <h3 style="margin-top:.4rem">Membros</h3>
+          <h3 style="margin-top:.4rem">Membros e gestão</h3>
+          <p class="hint" id="members-help" style="margin-top:0">Se você é criador, use os botões em cada pessoa para admin/remover.</p>
           <div class="members" id="members-list"></div>
         </div>
 
@@ -501,28 +515,22 @@
           <p class="hint" id="pix-hint" style="margin-top:0">Somente o criador do grupo pode alterar a chave PIX.</p>
           <div id="pix-fields">
             <label class="field" for="cfg-pix-key">Chave PIX</label>
-            <input id="cfg-pix-key" type="text" placeholder="Telefone, e-mail ou chave">
+            <input id="cfg-pix-key" type="text" placeholder="Telefone, e-mail ou chave" autocomplete="off">
             <label class="field" for="cfg-pix-name">Nome do recebedor</label>
-            <input id="cfg-pix-name" type="text" placeholder="Nome no PIX" maxlength="25">
+            <input id="cfg-pix-name" type="text" placeholder="Nome no PIX" maxlength="25" autocomplete="off">
             <label class="field" for="cfg-pix-city">Cidade</label>
-            <input id="cfg-pix-city" type="text" placeholder="Cidade" maxlength="15">
+            <input id="cfg-pix-city" type="text" placeholder="Cidade" maxlength="15" autocomplete="off">
             <button class="btn btn-primary" type="button" id="btn-save-cfg">Salvar PIX</button>
           </div>
           <div class="form-error" id="cfg-error"></div>
         </div>
 
         <div class="card">
-          <h3>Notificações</h3>
-          <p class="hint" style="margin-top:0">Receba alertas de chat, despesas e compras neste aparelho.</p>
-          <button class="btn btn-ghost" style="width:100%;margin-top:.6rem" type="button" id="btn-enable-notifs">Ativar notificações</button>
-          <div class="hint" id="notif-status"></div>
-        </div>
-
-        <div class="card">
-          <h3>Conta</h3>
+          <h3>Conta e grupo</h3>
           <p class="hint" id="account-info" style="margin-top:0"></p>
           <button class="btn btn-ghost" style="width:100%;margin-top:.7rem" type="button" id="btn-leave-group">Sair deste grupo</button>
-          <button class="btn btn-danger hidden" style="width:100%;margin-top:.55rem" type="button" id="btn-delete-group">Apagar grupo permanentemente</button>
+          <button class="btn btn-danger" style="width:100%;margin-top:.55rem" type="button" id="btn-delete-group">Apagar grupo permanentemente</button>
+          <p class="hint" id="account-actions-hint" style="margin-top:.55rem"></p>
         </div>
       </section>
     </main>
@@ -582,6 +590,6 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="app.js"></script>
+  <script src="app.js?v=20260723e"></script>
 </body>
 </html>
