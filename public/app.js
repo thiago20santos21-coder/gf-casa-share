@@ -323,7 +323,6 @@
 
   async function runWrite(op) {
     op.groupId = op.groupId || groupId;
-    // Com persistence do Firestore, tenta gravar sempre; se falhar, fila local
     try {
       await executeQueuedOp(op);
       if (!navigator.onLine) {
@@ -333,6 +332,13 @@
       }
       return { offline: false };
     } catch (err) {
+      const code = (err && err.code) || '';
+      // Não enfileirar erros de permissão — nunca vão sincronizar
+      if (code === 'permission-denied') {
+        console.error('permission-denied', op, err);
+        toast('Sem permissão para esta ação');
+        return { offline: false, error: err };
+      }
       await queueAdd(op);
       await updateOfflineUI();
       toast(navigator.onLine ? 'Sem conexão estável — salvo na fila' : 'Salvo offline — será sincronizado ao reconectar');
@@ -1263,7 +1269,24 @@
 
   async function removerGasto(id) {
     if (!groupId || !id) return;
-    await runWrite({ action: 'deleteExpense', docId: id });
+    if (String(id).startsWith('local-')) {
+      expenses = expenses.filter((g) => g.id !== id);
+      saveLocalCache('expenses', expenses);
+      renderExpenses();
+      toast('Despesa removida');
+      return;
+    }
+    const prev = expenses;
+    expenses = expenses.filter((g) => g.id !== id);
+    renderExpenses();
+    const res = await runWrite({ action: 'deleteExpense', docId: id });
+    if (res && res.error && res.error.code === 'permission-denied') {
+      expenses = prev;
+      renderExpenses();
+      return;
+    }
+    saveLocalCache('expenses', expenses);
+    toast('Despesa removida');
   }
 
   async function apagarUltimo() {
@@ -1278,7 +1301,34 @@
       okText: 'Apagar todas'
     });
     if (!ok) return;
-    await runWrite({ action: 'clearExpenses', docIds: expenses.map((g) => g.id) });
+    const ids = expenses.map((g) => g.id).filter((id) => id && !String(id).startsWith('local-'));
+    const prev = expenses;
+    expenses = [];
+    renderExpenses();
+    if (!ids.length) {
+      saveLocalCache('expenses', expenses);
+      toast('Despesas apagadas');
+      return;
+    }
+    const res = await runWrite({ action: 'clearExpenses', docIds: ids });
+    if (res && res.error && res.error.code === 'permission-denied') {
+      expenses = prev;
+      renderExpenses();
+      return;
+    }
+    // Se clear parcial falhar no meio, tenta um a um
+    if (res && res.error) {
+      let failed = 0;
+      for (const id of ids) {
+        const r = await runWrite({ action: 'deleteExpense', docId: id });
+        if (r && r.error) failed += 1;
+      }
+      if (failed) {
+        toast('Algumas despesas não puderam ser apagadas');
+        return;
+      }
+    }
+    saveLocalCache('expenses', expenses);
     toast('Despesas apagadas');
   }
 
@@ -1816,7 +1866,7 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-        .register('/sw.js?v=14', { updateViaCache: 'none' })
+        .register('/sw.js?v=15', { updateViaCache: 'none' })
         .then((reg) => {
           reg.update().catch(() => {});
           if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -1829,7 +1879,7 @@
           updateInstallUI();
         })
         .catch(() => {
-          navigator.serviceWorker.register('./sw.js?v=14', { updateViaCache: 'none' }).catch(() => {});
+          navigator.serviceWorker.register('./sw.js?v=15', { updateViaCache: 'none' }).catch(() => {});
         });
     }
 

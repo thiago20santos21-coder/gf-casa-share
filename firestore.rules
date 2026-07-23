@@ -128,18 +128,15 @@ service cloud.firestore {
         allow read: if isMember(groupId);
         allow create: if isMember(groupId);
         allow update: if isMember(groupId);
-        allow delete: if isMember(groupId) && (
-          resource.data.createdBy == request.auth.uid || isAdmin(groupId)
-        );
+        // Qualquer membro pode remover despesas do grupo (lista compartilhada)
+        allow delete: if isMember(groupId);
       }
 
       match /shopping/{docId} {
         allow read: if isMember(groupId);
         allow create: if isMember(groupId);
         allow update: if isMember(groupId);
-        allow delete: if isMember(groupId) && (
-          resource.data.createdBy == request.auth.uid || isAdmin(groupId)
-        );
+        allow delete: if isMember(groupId);
       }
 
       match /messages/{docId} {
