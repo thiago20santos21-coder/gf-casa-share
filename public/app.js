@@ -681,7 +681,11 @@
     showPage('expenses');
     updateOfflineUI();
     flushQueue();
-    ensureNotifPermission(false);
+    ensureNotifPermission(false).then((ok) => {
+      if (!ok && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        toast('Ative as notificações em Grupo para receber chat e despesas');
+      }
+    });
 
     unsubGroup = db
       .collection('groups')
