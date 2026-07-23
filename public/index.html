@@ -10,10 +10,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Casa Share">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="manifest" href="manifest.json?v=20260723r">
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/casa-192.png?v=20260723r">
-  <link rel="icon" type="image/png" sizes="512x512" href="icons/casa-512.png?v=20260723r">
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/casa-apple-180.png?v=20260723r">
+  <link rel="manifest" href="manifest.json?v=20260723s">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/casa-192.png?v=20260723s">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/casa-512.png?v=20260723s">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/casa-apple-180.png?v=20260723s">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -315,7 +315,7 @@
   <div id="auth-screen" class="hidden">
     <div class="wrap">
       <div class="brand">
-        <img class="brand-logo" src="icons/casa-192.png?v=20260723r" alt="Casa Share">
+        <img class="brand-logo" src="icons/casa-192.png?v=20260723s" alt="Casa Share">
         <div class="brand-mark">Casa Share</div>
         <p>Despesas, compras e chat sincronizados para o grupo</p>
       </div>
@@ -351,7 +351,7 @@
         <input id="group-name" type="text" placeholder="Ex: Casa / República">
         <label class="field" for="group-people">Pessoas no grupo (inclui você)</label>
         <input id="group-people" type="number" min="2" max="20" value="3">
-        <p class="hint">Quem cria o grupo recebe o PIX e não entra no rateio. Os demais membros pagam.</p>
+        <p class="hint">Quem cria o grupo cadastra o PIX. O rateio é dividido entre todas as pessoas do grupo, inclusive o criador.</p>
         <button class="btn btn-primary" type="button" id="btn-criar-grupo">Criar grupo</button>
       </div>
       <div class="card">
@@ -384,7 +384,7 @@
     <main>
       <section class="page" id="page-expenses">
         <div class="receiver-banner" id="receiver-banner">
-          Você é o criador do grupo: recebe o PIX e <strong>não paga</strong> o rateio. O valor é dividido só entre os demais membros.
+          Você é o criador: a chave PIX é a sua. O rateio é <strong>igual para todos</strong> (inclusive você) — cada um paga o valor por pessoa.
         </div>
         <div class="summary-grid">
           <div class="summary-item">
@@ -396,7 +396,7 @@
             <div class="summary-value" id="total-geral">R$ 0,00</div>
           </div>
           <div class="summary-item accent">
-            <div class="summary-label" id="label-por-pessoa">Por pagante</div>
+            <div class="summary-label" id="label-por-pessoa">Por pessoa</div>
             <div class="summary-value" id="total-por-pessoa">R$ 0,00</div>
           </div>
         </div>
@@ -492,7 +492,7 @@
 
         <div class="card">
           <h3>Convide o grupo</h3>
-          <p class="hint" style="margin-top:0">Quem entra com o código paga o rateio. O criador recebe o PIX.</p>
+          <p class="hint" style="margin-top:0">O valor é dividido entre todos os membros. O criador cadastra a chave PIX para receber.</p>
           <div class="invite-box">
             <div style="font-size:.72rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em">Código</div>
             <div class="invite-code" id="invite-code-display">------</div>
@@ -501,8 +501,8 @@
 
           <div class="roles-box" id="roles-help">
             <strong>Papéis:</strong>
-            Criador — edita o PIX, define admins, remove membros e apaga o grupo.
-            Admin — remove membros e modera o conteúdo.
+            Criador — edita o PIX, define admins, remove membros, apaga qualquer mensagem e apaga o grupo. Entra no rateio como todos.
+            Admin — remove membros, modera conteúdo e apaga mensagens.
             Membro — usa o app e pode sair do grupo; não edita o PIX.
           </div>
 
@@ -592,7 +592,7 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="app.js?v=20260723r"></script>
+  <script src="app.js?v=20260723s"></script>
 </body>
 </html>
 

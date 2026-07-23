@@ -158,7 +158,9 @@ service cloud.firestore {
           && request.resource.data.text.size() <= 1000;
 
         allow delete: if isMember(groupId) && (
-          resource.data.uid == request.auth.uid || isAdmin(groupId)
+          resource.data.uid == request.auth.uid
+          || isCreator(groupId)
+          || isAdmin(groupId)
         );
       }
     }

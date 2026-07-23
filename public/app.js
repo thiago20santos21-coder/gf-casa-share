@@ -501,14 +501,29 @@
     return adminIds().includes(uid);
   }
 
-  function payingMembers() {
+  function shareMembers() {
     const members = (currentGroup && currentGroup.members) || [];
-    const creatorId = currentGroup && currentGroup.createdBy;
-    return members.filter((m) => m.uid !== creatorId);
+    if (members.length) return members.slice();
+    return [];
+  }
+
+  /** Inclui o criador. Preferência: membros reais; senão personCount do grupo. */
+  function shareCount() {
+    const members = shareMembers();
+    if (members.length > 0) return members.length;
+    const ids = (currentGroup && currentGroup.memberIds) || [];
+    if (ids.length > 0) return ids.length;
+    const pc = currentGroup && parseInt(currentGroup.personCount, 10);
+    return Math.max(1, pc || 1);
+  }
+
+  // legado — rateio agora inclui todos
+  function payingMembers() {
+    return shareMembers();
   }
 
   function payingCount() {
-    return Math.max(0, payingMembers().length);
+    return shareCount();
   }
 
   function isStandaloneDisplay() {
@@ -1145,9 +1160,9 @@
     const roleBanner = $('role-banner-text');
     if (roleBanner) {
       roleBanner.textContent = creator
-        ? 'Você é o CRIADOR: edita PIX, promove admins, remove membros e pode apagar o grupo.'
+        ? 'Você é o CRIADOR: edita PIX, promove admins, remove membros, apaga mensagens de qualquer um e pode apagar o grupo.'
         : admin
-          ? 'Você é ADMIN: pode remover membros e moderar conteúdo. PIX só o criador edita.'
+          ? 'Você é ADMIN: pode remover membros, moderar conteúdo e apagar mensagens. PIX só o criador edita.'
           : 'Você é MEMBRO: use despesas, compras e chat. Pode sair do grupo. O PIX é somente leitura.';
     }
 
@@ -1217,9 +1232,9 @@
       const el = document.createElement('div');
       el.className = 'member';
       let tags = '';
-      if (isRecv) tags += '<span class="member-tag">Criador · Recebe</span>';
-      else if (userIsAdmin) tags += '<span class="member-tag admin">Admin · Paga</span>';
-      else tags += '<span class="member-tag muted">Membro · Paga</span>';
+      if (isRecv) tags += '<span class="member-tag">Criador · PIX</span>';
+      else if (userIsAdmin) tags += '<span class="member-tag admin">Admin</span>';
+      else tags += '<span class="member-tag muted">Membro</span>';
 
       let actions = '';
       if (!isRecv && creator) {
@@ -1380,12 +1395,12 @@
         tb.appendChild(tr);
       });
     }
-    const n = payingCount();
-    const porPagante = n > 0 ? soma / n : 0;
+    const n = shareCount();
+    const porPessoa = n > 0 ? soma / n : 0;
     $('total-geral').textContent = `R$ ${fmt(soma)}`;
-    $('total-por-pessoa').textContent = n > 0 ? `R$ ${fmt(porPagante)}` : '—';
+    $('total-por-pessoa').textContent = n > 0 ? `R$ ${fmt(porPessoa)}` : '—';
     $('total-itens').textContent = expenses.length;
-    $('label-por-pessoa').textContent = n > 0 ? `Por pagante (÷${n})` : 'Sem pagantes';
+    $('label-por-pessoa').textContent = n > 0 ? `Por pessoa (÷${n})` : 'Sem pessoas';
   }
 
   async function adicionarGasto() {
@@ -1589,7 +1604,8 @@
     messages.forEach((m) => {
       const mine = m.uid === currentUser.uid;
       const canEdit = mine;
-      const canDelete = mine || isAdmin();
+      // Criador e admin podem apagar qualquer mensagem; membro só a própria
+      const canDelete = mine || creator || isAdmin();
       const el = document.createElement('div');
       el.className = 'msg ' + (mine ? 'mine' : 'theirs');
       el.dataset.id = m.id;
@@ -1670,9 +1686,18 @@
 
   async function apagarMsg(m) {
     const mine = m.uid === currentUser.uid;
-    const label = mine ? 'Apagar sua mensagem?' : 'Apagar mensagem de ' + (m.name || 'membro') + '?';
+    const asMod = isCreator() || isAdmin();
+    const label = mine
+      ? 'Apagar sua mensagem?'
+      : asMod
+        ? 'Apagar mensagem de ' + (m.name || 'membro') + '?'
+        : 'Apagar mensagem?';
     const ok = await appConfirm(label, { title: 'Apagar mensagem', okText: 'Apagar' });
     if (!ok) return;
+    if (!mine && !asMod) {
+      toast('Sem permissão para apagar esta mensagem');
+      return;
+    }
     await runWrite({ action: 'deleteMessage', docId: m.id });
     if (editingMsgId === m.id) editingMsgId = null;
     toast('Mensagem apagada');
@@ -1798,11 +1823,10 @@
       showPage('settings');
       return;
     }
-    const payers = payingMembers();
-    const n = payers.length;
-    if (n === 0) {
-      toast('Convide membros — o criador não paga o rateio');
-      showPage('settings');
+    const people = shareMembers();
+    const n = shareCount();
+    if (n < 1) {
+      toast('Não há pessoas no grupo para ratear');
       return;
     }
 
@@ -1816,20 +1840,24 @@
       toast('Total inválido para gerar PIX');
       return;
     }
-    const porPagante = Math.round((total / n) * 100) / 100;
+    const porPessoa = Math.round((total / n) * 100) / 100;
     const creatorMember = ((currentGroup.members || []).find((m) => m.uid === currentGroup.createdBy) || {});
     const creatorName = creatorMember.name || pix.nome || 'Criador';
+    const names =
+      people.length > 0
+        ? people.map((p) => p.name || 'Membro').join(', ')
+        : `${n} pessoa(s)`;
 
     let texto = `*FECHAMENTO — ${currentGroup.name || 'Grupo'}*\n\n`;
     texto += `*Despesas:*\n${detalhes}\n`;
     texto += `*Total: R$ ${fmt(total)}*\n`;
-    texto += `*Pagantes (${n}):* ${payers.map((p) => p.name || 'Membro').join(', ')}\n`;
-    texto += `*Valor por pagante: R$ ${fmt(porPagante)}*\n\n`;
-    texto += `_O criador (${creatorName}) recebe e não paga._\n\n`;
+    texto += `*Pessoas (${n}):* ${names}\n`;
+    texto += `*Valor por pessoa: R$ ${fmt(porPessoa)}*\n\n`;
+    texto += `_Rateio igual para todos, inclusive o criador. PIX para ${creatorName}._\n\n`;
     texto += `*Chave PIX:* ${chaveNorm}\n*Titular:* ${pix.nome || creatorName}\n`;
 
     try {
-      pixPayloadAtual = gerarPixPayload(chaveNorm, pix.nome || creatorName, pix.cidade, porPagante);
+      pixPayloadAtual = gerarPixPayload(chaveNorm, pix.nome || creatorName, pix.cidade, porPessoa);
     } catch (err) {
       console.error(err);
       toast(err.message || 'Erro ao gerar código PIX');
@@ -1849,9 +1877,8 @@
 
     $('pix-code-display').value = pixPayloadAtual;
     $('texto-grupo').value = texto;
-    $('pix-modal-hint').textContent = (isCreator()
-      ? `Você recebe. Cada pagante: R$ ${fmt(porPagante)}.`
-      : `Sua parte: R$ ${fmt(porPagante)}.`) + ' Chave: ' + chaveNorm;
+    $('pix-modal-hint').textContent =
+      `Valor por pessoa (÷${n}): R$ ${fmt(porPessoa)}. Chave: ${chaveNorm}`;
     // garante container do QR
     const wrap = $('qr-wrap');
     if (wrap && !wrap.querySelector('#qr-img')) {
@@ -1863,7 +1890,7 @@
     $('btn-copy-pix').textContent = 'Copiar Pix Copia e Cola';
     $('pix-modal').classList.add('active');
 
-    notifyUser('PIX gerado', `Valor por pagante: R$ ${fmt(porPagante)}`, 'pix-ready-' + Date.now(), {
+    notifyUser('PIX gerado', `Valor por pessoa: R$ ${fmt(porPessoa)}`, 'pix-ready-' + Date.now(), {
       force: true,
       page: 'expenses',
       url: '/?page=expenses'
@@ -2117,7 +2144,7 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-        .register('/sw.js?v=17', { updateViaCache: 'none' })
+        .register('/sw.js?v=18', { updateViaCache: 'none' })
         .then((reg) => {
           reg.update().catch(() => {});
           if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -2130,7 +2157,7 @@
           updateInstallUI();
         })
         .catch(() => {
-          navigator.serviceWorker.register('./sw.js?v=17', { updateViaCache: 'none' }).catch(() => {});
+          navigator.serviceWorker.register('./sw.js?v=18', { updateViaCache: 'none' }).catch(() => {});
         });
     }
 
