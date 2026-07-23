@@ -1,12 +1,12 @@
-/* GF Casa Share — Service Worker v5 (hard cache bust) */
-const CACHE_NAME = 'gf-casa-share-v5';
+/* GF Casa Share — Service Worker v6 (hard cache bust) */
+const CACHE_NAME = 'gf-casa-share-v6';
 const PRECACHE = [
   './',
   './index.html',
   './app.js',
-  './app.js?v=20260723e',
+  './app.js?v=20260723f',
   './manifest.json',
-  './manifest.json?v=20260723e',
+  './manifest.json?v=20260723f',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-192.png',

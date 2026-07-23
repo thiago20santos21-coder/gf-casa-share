@@ -1606,22 +1606,22 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-      .register('/sw.js?v=5', { updateViaCache: 'none' })
-      .then((reg) => {
-        reg.update().catch(() => {});
-        if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!sessionStorage.getItem('gf_sw_reloaded')) {
-            sessionStorage.setItem('gf_sw_reloaded', '1');
-            location.reload();
-          }
+        .register('/sw.js?v=6', { updateViaCache: 'none' })
+        .then((reg) => {
+          reg.update().catch(() => {});
+          if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!sessionStorage.getItem('gf_sw_reloaded')) {
+              sessionStorage.setItem('gf_sw_reloaded', '1');
+              location.reload();
+            }
+          });
+          updateInstallUI();
+        })
+        .catch(() => {
+          navigator.serviceWorker.register('./sw.js?v=6', { updateViaCache: 'none' }).catch(() => {});
         });
-        updateInstallUI();
-      })
-      .catch(() => {
-        navigator.serviceWorker.register('./sw.js?v=5', { updateViaCache: 'none' }).catch(() => {});
-      });
-  }
+    }
 
   updateOfflineUI();
   updateInstallUI();
