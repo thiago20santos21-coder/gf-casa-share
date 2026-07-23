@@ -1,4 +1,4 @@
-/* GF Casa Share — app logic */
+﻿/* GF Casa Share â€” app logic */
 (function () {
   'use strict';
 
@@ -119,16 +119,16 @@
   function authErrorMsg(err) {
     const code = (err && err.code) || '';
     const map = {
-      'auth/email-already-in-use': 'Este e-mail já está em uso.',
-      'auth/invalid-email': 'E-mail inválido.',
-      'auth/weak-password': 'Senha fraca (mín. 6 caracteres).',
-      'auth/user-not-found': 'Conta não encontrada.',
+      'auth/email-already-in-use': 'Este e-mail jÃ¡ estÃ¡ em uso.',
+      'auth/invalid-email': 'E-mail invÃ¡lido.',
+      'auth/weak-password': 'Senha fraca (mÃ­n. 6 caracteres).',
+      'auth/user-not-found': 'Conta nÃ£o encontrada.',
       'auth/wrong-password': 'Senha incorreta.',
-      'auth/invalid-credential': 'E-mail ou senha inválidos.',
+      'auth/invalid-credential': 'E-mail ou senha invÃ¡lidos.',
       'auth/too-many-requests': 'Muitas tentativas. Aguarde um pouco.',
       'auth/configuration-not-found':
-        'Auth ainda não foi ativado no Firebase Console. Abra Authentication → Começar → E-mail/senha.',
-      'auth/operation-not-allowed': 'Login por e-mail ainda não está habilitado no Firebase Console.'
+        'Auth ainda nÃ£o foi ativado no Firebase Console. Abra Authentication â†’ ComeÃ§ar â†’ E-mail/senha.',
+      'auth/operation-not-allowed': 'Login por e-mail ainda nÃ£o estÃ¡ habilitado no Firebase Console.'
     };
     return map[code] || (err && err.message) || 'Erro inesperado.';
   }
@@ -192,10 +192,10 @@
     $('pill-live').classList.toggle('hidden', !online);
     $('pill-offline').classList.toggle('hidden', online && pending === 0);
     if (!online) {
-      $('pill-offline').textContent = pending ? `Offline — ${pending} na fila` : 'Offline';
+      $('pill-offline').textContent = pending ? `Offline â€” ${pending} na fila` : 'Offline';
     } else if (pending) {
       $('pill-offline').classList.remove('hidden');
-      $('pill-offline').textContent = `Sincronizando ${pending}…`;
+      $('pill-offline').textContent = `Sincronizando ${pending}â€¦`;
     }
   }
 
@@ -256,7 +256,7 @@
       }
     }
     const left = await queueCount();
-    if (!left) toast('Alterações sincronizadas');
+    if (!left) toast('AlteraÃ§Ãµes sincronizadas');
     await updateOfflineUI();
   }
 
@@ -265,7 +265,7 @@
     if (!navigator.onLine) {
       await queueAdd(op);
       await updateOfflineUI();
-      toast('Salvo offline — sincroniza ao conectar');
+      toast('Salvo offline â€” sincroniza ao conectar');
       return { offline: true };
     }
     try {
@@ -274,7 +274,7 @@
     } catch (err) {
       await queueAdd(op);
       await updateOfflineUI();
-      toast('Sem conexão estável — na fila');
+      toast('Sem conexÃ£o estÃ¡vel â€” na fila');
       return { offline: true, error: err };
     }
   }
@@ -293,30 +293,30 @@
   async function ensureNotifPermission(interactive) {
     const statusEl = $('notif-status');
     if (typeof Notification === 'undefined') {
-      if (statusEl) statusEl.textContent = 'Este navegador não suporta notificações.';
+      if (statusEl) statusEl.textContent = 'Este navegador nÃ£o suporta notificaÃ§Ãµes.';
       return false;
     }
     if (Notification.permission === 'granted') {
       notifPermission = 'granted';
-      if (statusEl) statusEl.textContent = 'Notificações ativas neste aparelho.';
+      if (statusEl) statusEl.textContent = 'NotificaÃ§Ãµes ativas neste aparelho.';
       return true;
     }
     if (Notification.permission === 'denied') {
-      if (statusEl) statusEl.textContent = 'Bloqueadas nas configurações do navegador/sistema. Ative manualmente.';
+      if (statusEl) statusEl.textContent = 'Bloqueadas nas configuraÃ§Ãµes do navegador/sistema. Ative manualmente.';
       return false;
     }
     if (!interactive) {
-      if (statusEl) statusEl.textContent = 'Toque em “Ativar notificações” para receber alertas.';
+      if (statusEl) statusEl.textContent = 'Toque em â€œAtivar notificaÃ§Ãµesâ€ para receber alertas.';
       return false;
     }
     const res = await Notification.requestPermission();
     notifPermission = res;
     if (res === 'granted') {
-      if (statusEl) statusEl.textContent = 'Notificações ativas neste aparelho.';
-      await notifyUser('GF Casa Share', 'Notificações ligadas. Você será avisado de novidades no grupo.', 'notif-on', true);
+      if (statusEl) statusEl.textContent = 'NotificaÃ§Ãµes ativas neste aparelho.';
+      await notifyUser('GF Casa Share', 'NotificaÃ§Ãµes ligadas. VocÃª serÃ¡ avisado de novidades no grupo.', 'notif-on', true);
       return true;
     }
-    if (statusEl) statusEl.textContent = 'Permissão negada.';
+    if (statusEl) statusEl.textContent = 'PermissÃ£o negada.';
     return false;
   }
 
@@ -486,7 +486,7 @@
     const snap = await ref.get();
     if (!snap.exists) {
       const profile = {
-        name: user.displayName || (user.email || '').split('@')[0] || 'Usuário',
+        name: user.displayName || (user.email || '').split('@')[0] || 'UsuÃ¡rio',
         email: user.email || '',
         groupId: null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -546,7 +546,7 @@
       const inviteCode = makeInviteCode();
       const member = {
         uid: currentUser.uid,
-        name: userProfile.name || currentUser.displayName || 'Usuário',
+        name: userProfile.name || currentUser.displayName || 'UsuÃ¡rio',
         email: currentUser.email || ''
       };
       const groupRef = db.collection('groups').doc();
@@ -569,10 +569,10 @@
       await db.collection('users').doc(currentUser.uid).set({ groupId: groupRef.id }, { merge: true });
       userProfile.groupId = groupRef.id;
       await entrarNoApp(groupRef.id);
-      toast('Grupo criado — você recebe o PIX');
+      toast('Grupo criado â€” vocÃª recebe o PIX');
     } catch (err) {
       console.error(err);
-      $('group-error').textContent = err.message || 'Não foi possível criar o grupo.';
+      $('group-error').textContent = err.message || 'NÃ£o foi possÃ­vel criar o grupo.';
     }
   }
 
@@ -580,12 +580,12 @@
     const inv = await db.collection('invites').doc(code).get();
     if (inv.exists) {
       const data = inv.data() || {};
-      if (!data.groupId) throw new Error('Convite incompleto. Peça um novo código.');
+      if (!data.groupId) throw new Error('Convite incompleto. PeÃ§a um novo cÃ³digo.');
       return { groupId: data.groupId, groupName: data.groupName || '' };
     }
     // Fallback: some older groups may only store inviteCode on the group doc.
-    // Requires get-by-id; without list permission we can't query — recreate invite index.
-    throw new Error('Código inválido. Confira se digitou certo (sem espaços).');
+    // Requires get-by-id; without list permission we can't query â€” recreate invite index.
+    throw new Error('CÃ³digo invÃ¡lido. Confira se digitou certo (sem espaÃ§os).');
   }
 
   async function entrarGrupo() {
@@ -603,12 +603,12 @@
       const gRef = db.collection('groups').doc(gid);
       await db.runTransaction(async (tx) => {
         const gSnap = await tx.get(gRef);
-        if (!gSnap.exists) throw new Error('Grupo não encontrado para este código.');
+        if (!gSnap.exists) throw new Error('Grupo nÃ£o encontrado para este cÃ³digo.');
         const data = gSnap.data();
         if ((data.memberIds || []).includes(currentUser.uid)) return;
         const member = {
           uid: currentUser.uid,
-          name: userProfile.name || currentUser.displayName || 'Usuário',
+          name: userProfile.name || currentUser.displayName || 'UsuÃ¡rio',
           email: currentUser.email || ''
         };
         tx.update(gRef, {
@@ -622,9 +622,9 @@
       toast('Entrou em ' + (groupName || 'grupo'));
     } catch (err) {
       console.error('entrarGrupo', err);
-      let msg = err.message || 'Não foi possível entrar.';
+      let msg = err.message || 'NÃ£o foi possÃ­vel entrar.';
       if (err.code === 'permission-denied') {
-        msg = 'Sem permissão para entrar neste grupo. Atualize a página e tente de novo.';
+        msg = 'Sem permissÃ£o para entrar neste grupo. Atualize a pÃ¡gina e tente de novo.';
       }
       $('group-error').textContent = msg;
     } finally {
@@ -667,7 +667,7 @@
             groupId = null;
             currentGroup = null;
             showScreen('group-screen');
-            toast('Você foi removido do grupo');
+            toast('VocÃª foi removido do grupo');
             return;
           }
           // Backfill adminIds for older groups (creator only)
@@ -697,7 +697,7 @@
               if (ch.type === 'added' && !seenExpense.has(ch.doc.id)) {
                 const data = ch.doc.data();
                 if (data.createdBy !== currentUser.uid) {
-                  notifyUser('Nova despesa', `${data.createdByName || 'Alguém'}: ${data.descricao} — R$ ${fmt(data.valor)}`, 'expense-' + ch.doc.id);
+                  notifyUser('Nova despesa', `${data.createdByName || 'AlguÃ©m'}: ${data.descricao} â€” R$ ${fmt(data.valor)}`, 'expense-' + ch.doc.id);
                 }
               }
               seenExpense.add(ch.doc.id);
@@ -725,13 +725,13 @@
               if (ch.type === 'added' && !seenShop.has(ch.doc.id)) {
                 const data = ch.doc.data();
                 if (data.createdBy !== currentUser.uid) {
-                  notifyUser('Lista de compras', `${data.createdByName || 'Alguém'} adicionou: ${data.text}`, 'shop-' + ch.doc.id);
+                  notifyUser('Lista de compras', `${data.createdByName || 'AlguÃ©m'} adicionou: ${data.text}`, 'shop-' + ch.doc.id);
                 }
               }
               if (ch.type === 'modified') {
                 const data = ch.doc.data();
                 if (data.done && data.doneBy && data.doneBy !== currentUser.uid) {
-                  notifyUser('Item comprado', `${data.doneByName || 'Alguém'} comprou: ${data.text}`, 'shop-done-' + ch.doc.id);
+                  notifyUser('Item comprado', `${data.doneByName || 'AlguÃ©m'} comprou: ${data.text}`, 'shop-done-' + ch.doc.id);
                 }
               }
               seenShop.add(ch.doc.id);
@@ -788,18 +788,18 @@
     const roleLabel = creator ? 'Criador' : admin ? 'Admin' : 'Membro';
 
     $('account-info').textContent =
-      (userProfile && userProfile.name ? userProfile.name + ' · ' : '') +
+      (userProfile && userProfile.name ? userProfile.name + ' Â· ' : '') +
       (currentUser.email || '') +
-      ' · ' +
+      ' Â· ' +
       roleLabel;
 
     const roleBanner = $('role-banner-text');
     if (roleBanner) {
       roleBanner.textContent = creator
-        ? 'Você é o CRIADOR: edita PIX, promove admins, remove membros e pode apagar o grupo.'
+        ? 'VocÃª Ã© o CRIADOR: edita PIX, promove admins, remove membros e pode apagar o grupo.'
         : admin
-          ? 'Você é ADMIN: pode remover membros e moderar conteúdo. PIX só o criador edita.'
-          : 'Você é MEMBRO: use despesas/compras/chat. Pode sair do grupo. PIX é só leitura.';
+          ? 'VocÃª Ã© ADMIN: pode remover membros e moderar conteÃºdo. PIX sÃ³ o criador edita.'
+          : 'VocÃª Ã© MEMBRO: use despesas/compras/chat. Pode sair do grupo. PIX Ã© sÃ³ leitura.';
     }
 
     $('pill-receiver').classList.toggle('hidden', !creator);
@@ -823,8 +823,8 @@
     }
     if (pixHint) {
       pixHint.textContent = creator
-        ? 'Somente você (criador) pode alterar a chave PIX.'
-        : 'PIX bloqueado para edição — somente o criador altera.';
+        ? 'Somente vocÃª (criador) pode alterar a chave PIX.'
+        : 'PIX bloqueado para ediÃ§Ã£o â€” somente o criador altera.';
     }
 
     const delBtn = $('btn-delete-group');
@@ -842,19 +842,19 @@
     }
     if (actionsHint) {
       actionsHint.textContent = creator
-        ? 'Como criador, use Apagar grupo (não é possível “sair” sem apagar).'
-        : 'Use Sair deste grupo para deixar o espaço compartilhado.';
+        ? 'Como criador, use Apagar grupo (nÃ£o Ã© possÃ­vel â€œsairâ€ sem apagar).'
+        : 'Use Sair deste grupo para deixar o espaÃ§o compartilhado.';
     }
 
     const membersHelp = $('members-help');
     if (membersHelp) {
       const others = (currentGroup.members || []).filter((m) => m.uid !== currentGroup.createdBy);
       if (creator && others.length === 0) {
-        membersHelp.textContent = 'Convide alguém com o código acima. Depois aparecerão botões Tornar admin / Remover.';
+        membersHelp.textContent = 'Convide alguÃ©m com o cÃ³digo acima. Depois aparecerÃ£o botÃµes Tornar admin / Remover.';
       } else if (creator) {
-        membersHelp.textContent = 'Botões por membro: Tornar admin, Remover admin, Remover do grupo.';
+        membersHelp.textContent = 'BotÃµes por membro: Tornar admin, Remover admin, Remover do grupo.';
       } else if (admin) {
-        membersHelp.textContent = 'Como admin, você pode Remover outros membros (exceto o criador).';
+        membersHelp.textContent = 'Como admin, vocÃª pode Remover outros membros (exceto o criador).';
       } else {
         membersHelp.textContent = 'Somente criador/admin gerenciam a lista.';
       }
@@ -868,9 +868,9 @@
       const el = document.createElement('div');
       el.className = 'member';
       let tags = '';
-      if (isRecv) tags += '<span class="member-tag">Criador · Recebe</span>';
-      else if (userIsAdmin) tags += '<span class="member-tag admin">Admin · Paga</span>';
-      else tags += '<span class="member-tag muted">Membro · Paga</span>';
+      if (isRecv) tags += '<span class="member-tag">Criador Â· Recebe</span>';
+      else if (userIsAdmin) tags += '<span class="member-tag admin">Admin Â· Paga</span>';
+      else tags += '<span class="member-tag muted">Membro Â· Paga</span>';
 
       let actions = '';
       if (!isRecv && creator) {
@@ -915,14 +915,14 @@
       toast(makeAdmin ? 'Admin promovido' : 'Admin removido');
     } catch (err) {
       console.error(err);
-      toast(err.message || 'Falha ao atualizar admin (permissão/regras)');
+      toast(err.message || 'Falha ao atualizar admin (permissÃ£o/regras)');
     }
   }
 
   async function removerMembro(m) {
     if (!isAdmin() || !groupId) return;
     if (m.uid === currentGroup.createdBy) {
-      toast('Não é possível remover o criador');
+      toast('NÃ£o Ã© possÃ­vel remover o criador');
       return;
     }
     const ok = await appConfirm('Remover ' + (m.name || 'membro') + ' do grupo?', {
@@ -955,12 +955,12 @@
     if (!isCreator() || !groupId) return;
     const name = currentGroup.name || 'grupo';
     const ok1 = await appConfirm(
-      'Apagar permanentemente “' + name + '”? Despesas, compras, chat e convite serão removidos.',
+      'Apagar permanentemente â€œ' + name + 'â€? Despesas, compras, chat e convite serÃ£o removidos.',
       { title: 'Apagar grupo', okText: 'Continuar' }
     );
     if (!ok1) return;
-    const ok2 = await appConfirm('Tem certeza? Esta ação não pode ser desfeita.', {
-      title: 'Confirmação final',
+    const ok2 = await appConfirm('Tem certeza? Esta aÃ§Ã£o nÃ£o pode ser desfeita.', {
+      title: 'ConfirmaÃ§Ã£o final',
       okText: 'Apagar tudo'
     });
     if (!ok2) return;
@@ -1033,9 +1033,9 @@
     const n = payingCount();
     const porPagante = n > 0 ? soma / n : 0;
     $('total-geral').textContent = `R$ ${fmt(soma)}`;
-    $('total-por-pessoa').textContent = n > 0 ? `R$ ${fmt(porPagante)}` : '—';
+    $('total-por-pessoa').textContent = n > 0 ? `R$ ${fmt(porPagante)}` : 'â€”';
     $('total-itens').textContent = expenses.length;
-    $('label-por-pessoa').textContent = n > 0 ? `Por pagante (÷${n})` : 'Sem pagantes';
+    $('label-por-pessoa').textContent = n > 0 ? `Por pagante (Ã·${n})` : 'Sem pagantes';
   }
 
   async function adicionarGasto() {
@@ -1059,10 +1059,10 @@
       descricao: d,
       valor: v,
       createdBy: currentUser.uid,
-      createdByName: userProfile.name || currentUser.displayName || 'Alguém',
+      createdByName: userProfile.name || currentUser.displayName || 'AlguÃ©m',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
-    // offline: serverTimestamp can't be queued as FieldValue — use Date
+    // offline: serverTimestamp can't be queued as FieldValue â€” use Date
     const offlinePayload = {
       ...payload,
       createdAt: new Date()
@@ -1121,13 +1121,13 @@
       const el = document.createElement('div');
       el.className = 'shop-item' + (item.done ? ' done' : '');
       el.innerHTML = `
-        <button class="shop-check" type="button" aria-label="Marcar">${item.done ? '✓' : ''}</button>
+        <button class="shop-check" type="button" aria-label="Marcar">${item.done ? 'âœ“' : ''}</button>
         <div class="shop-body">
           <div class="shop-text">${escapeHTML(item.text)}</div>
           <div class="shop-by">${
             item.done
               ? 'Comprado' + (item.doneByName ? ' por ' + escapeHTML(item.doneByName) : '')
-              : 'Por ' + escapeHTML(item.createdByName || 'alguém')
+              : 'Por ' + escapeHTML(item.createdByName || 'alguÃ©m')
           }</div>
         </div>
         <button class="btn-remove" type="button">Remover</button>`;
@@ -1149,7 +1149,7 @@
       text,
       done: false,
       createdBy: currentUser.uid,
-      createdByName: userProfile.name || currentUser.displayName || 'Alguém',
+      createdByName: userProfile.name || currentUser.displayName || 'AlguÃ©m',
       createdAt: navigator.onLine ? firebase.firestore.FieldValue.serverTimestamp() : new Date(),
       doneBy: null,
       doneByName: null
@@ -1164,7 +1164,7 @@
     const payload = {
       done: !item.done,
       doneBy: !item.done ? currentUser.uid : null,
-      doneByName: !item.done ? userProfile.name || currentUser.displayName || 'Alguém' : null,
+      doneByName: !item.done ? userProfile.name || currentUser.displayName || 'AlguÃ©m' : null,
       doneAt: !item.done
         ? navigator.onLine
           ? firebase.firestore.FieldValue.serverTimestamp()
@@ -1202,7 +1202,7 @@
       const edited = !!m.editedAt;
 
       if (editingMsgId === m.id && canEdit) {
-        el.innerHTML = `${mine ? '' : `<div class="msg-author">${escapeHTML(m.name || 'Alguém')}</div>`}
+        el.innerHTML = `${mine ? '' : `<div class="msg-author">${escapeHTML(m.name || 'AlguÃ©m')}</div>`}
           <div class="msg-edit-row">
             <textarea maxlength="1000" class="msg-edit-input">${escapeHTML(m.text || '')}</textarea>
             <div class="msg-edit-actions">
@@ -1229,10 +1229,10 @@
           </div>`
         : '';
 
-      el.innerHTML = `${mine ? '' : `<div class="msg-author">${escapeHTML(m.name || 'Alguém')}</div>`}
+      el.innerHTML = `${mine ? '' : `<div class="msg-author">${escapeHTML(m.name || 'AlguÃ©m')}</div>`}
         <div class="msg-text">${escapeHTML(m.text || '')}</div>
         <div class="msg-meta">
-          <span class="msg-time${edited ? ' msg-edited' : ''}">${time}${edited ? ' · editada' : ''}</span>
+          <span class="msg-time${edited ? ' msg-edited' : ''}">${time}${edited ? ' Â· editada' : ''}</span>
           ${actions}
         </div>`;
 
@@ -1259,7 +1259,7 @@
       return;
     }
     if (text.length > 1000) {
-      toast('Máximo 1000 caracteres');
+      toast('MÃ¡ximo 1000 caracteres');
       return;
     }
     const payload = {
@@ -1289,7 +1289,7 @@
     const payload = {
       text,
       uid: currentUser.uid,
-      name: userProfile.name || currentUser.displayName || 'Alguém',
+      name: userProfile.name || currentUser.displayName || 'AlguÃ©m',
       createdAt: navigator.onLine ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
     };
     await runWrite({ action: 'addMessage', payload });
@@ -1320,15 +1320,15 @@
     const code = currentGroup && currentGroup.inviteCode;
     if (!code) return;
     await navigator.clipboard.writeText(code);
-    toast('Código copiado');
+    toast('CÃ³digo copiado');
   }
 
   async function sairDoGrupo() {
     if (isCreator()) {
-      toast('Como criador, use “Apagar grupo” (ou promova alguém e peça para recriar).');
+      toast('Como criador, use â€œApagar grupoâ€ (ou promova alguÃ©m e peÃ§a para recriar).');
       return;
     }
-    const ok = await appConfirm('Sair deste grupo? Você deixará de ver despesas, compras e chat.', {
+    const ok = await appConfirm('Sair deste grupo? VocÃª deixarÃ¡ de ver despesas, compras e chat.', {
       title: 'Sair do grupo',
       okText: 'Sair'
     });
@@ -1343,7 +1343,7 @@
       }
     } catch (err) {
       console.warn(err);
-      toast(err.message || 'Não foi possível sair');
+      toast(err.message || 'NÃ£o foi possÃ­vel sair');
       return;
     }
     clearListeners();
@@ -1352,7 +1352,7 @@
     groupId = null;
     currentGroup = null;
     showScreen('group-screen');
-    toast('Você saiu do grupo');
+    toast('VocÃª saiu do grupo');
   }
 
   async function fazerLogout() {
@@ -1371,7 +1371,7 @@
     const payers = payingMembers();
     const n = payers.length;
     if (n === 0) {
-      toast('Convide membros — o criador não paga o rateio');
+      toast('Convide membros â€” o criador nÃ£o paga o rateio');
       showPage('settings');
       return;
     }
@@ -1380,26 +1380,26 @@
     let detalhes = '';
     expenses.forEach((g) => {
       total += Number(g.valor) || 0;
-      detalhes += `• ${g.descricao}: R$ ${fmt(g.valor)}\n`;
+      detalhes += `â€¢ ${g.descricao}: R$ ${fmt(g.valor)}\n`;
     });
     const porPagante = total / n;
     const creatorMember = ((currentGroup.members || []).find((m) => m.uid === currentGroup.createdBy) || {});
     const creatorName = creatorMember.name || pix.nome || 'Criador';
 
-    let texto = `*FECHAMENTO — ${currentGroup.name || 'Grupo'}*\n\n`;
+    let texto = `*FECHAMENTO â€” ${currentGroup.name || 'Grupo'}*\n\n`;
     texto += `*Despesas:*\n${detalhes}\n`;
     texto += `*Total: R$ ${fmt(total)}*\n`;
     texto += `*Pagantes (${n}):* ${payers.map((p) => p.name || 'Membro').join(', ')}\n`;
     texto += `*Valor por pagante: R$ ${fmt(porPagante)}*\n\n`;
-    texto += `_O criador (${creatorName}) recebe e não paga._\n\n`;
+    texto += `_O criador (${creatorName}) recebe e nÃ£o paga._\n\n`;
     texto += `*Chave PIX:* ${pix.chave}\n*Titular:* ${pix.nome || creatorName}\n`;
 
     pixPayloadAtual = gerarPixPayload(pix.chave, pix.nome || creatorName, pix.cidade, porPagante);
     $('pix-code-display').value = pixPayloadAtual;
     $('texto-grupo').value = texto;
     $('pix-modal-hint').textContent = isCreator()
-      ? `Você recebe. Cada pagante deve transferir R$ ${fmt(porPagante)}.`
-      : `Sua parte: R$ ${fmt(porPagante)} (criador não paga).`;
+      ? `VocÃª recebe. Cada pagante deve transferir R$ ${fmt(porPagante)}.`
+      : `Sua parte: R$ ${fmt(porPagante)} (criador nÃ£o paga).`;
     renderQr(pixPayloadAtual);
     $('btn-copy-text').textContent = 'Copiar texto WhatsApp';
     $('btn-copy-text').classList.remove('copied');
@@ -1432,7 +1432,7 @@
   async function copiarPixCopieCola() {
     await navigator.clipboard.writeText(pixPayloadAtual);
     const b = $('btn-copy-pix');
-    b.textContent = 'Código PIX copiado';
+    b.textContent = 'CÃ³digo PIX copiado';
     setTimeout(() => {
       b.textContent = 'Copiar Pix Copia e Cola';
     }, 2200);
@@ -1458,9 +1458,9 @@
       if (deferredInstallPrompt) {
         hint.textContent = 'Seu navegador permite instalar com um toque.';
       } else if (isIos()) {
-        hint.textContent = 'No iPhone/iPad use Safari: Compartilhar → Adicionar à Tela de Início.';
+        hint.textContent = 'No iPhone/iPad use Safari: Compartilhar â†’ Adicionar Ã  Tela de InÃ­cio.';
       } else {
-        hint.textContent = 'Use o botão abaixo ou o menu do navegador (Instalar app / Adicionar à tela inicial).';
+        hint.textContent = 'Use o botÃ£o abaixo ou o menu do navegador (Instalar app / Adicionar Ã  tela inicial).';
       }
     }
     if (installBtn) {
@@ -1474,7 +1474,7 @@
 
   async function promptInstall() {
     if (isStandaloneDisplay()) {
-      toast('App já está instalado');
+      toast('App jÃ¡ estÃ¡ instalado');
       return;
     }
     if (deferredInstallPrompt) {
@@ -1483,16 +1483,16 @@
       deferredInstallPrompt = null;
       $('install-banner').classList.remove('show');
       updateInstallUI();
-      if (choice && choice.outcome === 'accepted') toast('Instalando…');
+      if (choice && choice.outcome === 'accepted') toast('Instalandoâ€¦');
       return;
     }
     const howto = $('install-howto');
     if (howto) howto.classList.remove('hidden');
     showPage('settings');
     if (isIos()) {
-      toast('Safari → Compartilhar → Tela de Início');
+      toast('Safari â†’ Compartilhar â†’ Tela de InÃ­cio');
     } else {
-      toast('Menu do navegador → Instalar app');
+      toast('Menu do navegador â†’ Instalar app');
     }
   }
 
@@ -1606,7 +1606,7 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-        .register('/sw.js?v=6', { updateViaCache: 'none' })
+        .register('/sw.js?v=7', { updateViaCache: 'none' })
         .then((reg) => {
           reg.update().catch(() => {});
           if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -1619,7 +1619,7 @@
           updateInstallUI();
         })
         .catch(() => {
-          navigator.serviceWorker.register('./sw.js?v=6', { updateViaCache: 'none' }).catch(() => {});
+          navigator.serviceWorker.register('./sw.js?v=7', { updateViaCache: 'none' }).catch(() => {});
         });
     }
 
@@ -1629,3 +1629,4 @@
     ensureNotifPermission(false);
   }
 })();
+

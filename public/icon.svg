@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="GF Casa Share">
   <rect width="512" height="512" rx="112" fill="#0b0f14"/>
-  <rect x="72" y="72" width="368" height="368" rx="72" fill="#1e2834"/>
-  <rect x="112" y="112" width="72" height="288" rx="20" fill="#3d9a8b"/>
-  <rect x="220" y="112" width="148" height="148" rx="28" fill="#e8c07d"/>
-  <rect x="220" y="292" width="180" height="18" rx="9" fill="#3d9a8b"/>
-  <rect x="220" y="336" width="180" height="18" rx="9" fill="#e8edf2"/>
-  <rect x="220" y="380" width="180" height="18" rx="9" fill="#8b96a3"/>
+  <rect x="72" y="72" width="368" height="368" rx="80" fill="#18212c"/>
+  <rect x="118" y="118" width="68" height="276" rx="22" fill="#3d9a8b"/>
+  <rect x="222" y="118" width="152" height="152" rx="30" fill="#e8c07d"/>
+  <rect x="318" y="210" width="40" height="28" rx="8" fill="#2a6f65"/>
+  <rect x="222" y="308" width="172" height="18" rx="9" fill="#3d9a8b"/>
+  <rect x="222" y="350" width="172" height="18" rx="9" fill="#e8edf2"/>
+  <rect x="222" y="392" width="172" height="18" rx="9" fill="#8b96a3"/>
 </svg>

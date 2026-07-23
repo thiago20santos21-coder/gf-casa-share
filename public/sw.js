@@ -1,12 +1,12 @@
-/* GF Casa Share — Service Worker v6 (hard cache bust) */
-const CACHE_NAME = 'gf-casa-share-v6';
+﻿/* GF Casa Share â€” Service Worker v7 (hard cache bust) */
+const CACHE_NAME = 'gf-casa-share-v7';
 const PRECACHE = [
   './',
   './index.html',
   './app.js',
-  './app.js?v=20260723f',
+  './app.js?v=20260723g',
   './manifest.json',
-  './manifest.json?v=20260723f',
+  './manifest.json?v=20260723g',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-192.png',
@@ -121,7 +121,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  let payload = { title: 'GF Casa Share', body: 'Nova atualização no grupo' };
+  let payload = { title: 'GF Casa Share', body: 'Nova atualizaÃ§Ã£o no grupo' };
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
   } catch (_) {}
@@ -135,3 +135,4 @@ self.addEventListener('push', (event) => {
     })
   );
 });
+
