@@ -10,10 +10,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Casa Share">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="manifest" href="manifest.json?v=20260723q">
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/casa-192.png?v=20260723q">
-  <link rel="icon" type="image/png" sizes="512x512" href="icons/casa-512.png?v=20260723q">
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/casa-apple-180.png?v=20260723q">
+  <link rel="manifest" href="manifest.json?v=20260723r">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/casa-192.png?v=20260723r">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/casa-512.png?v=20260723r">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/casa-apple-180.png?v=20260723r">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -315,7 +315,7 @@
   <div id="auth-screen" class="hidden">
     <div class="wrap">
       <div class="brand">
-        <img class="brand-logo" src="icons/casa-192.png?v=20260723q" alt="Casa Share">
+        <img class="brand-logo" src="icons/casa-192.png?v=20260723r" alt="Casa Share">
         <div class="brand-mark">Casa Share</div>
         <p>Despesas, compras e chat sincronizados para o grupo</p>
       </div>
@@ -513,10 +513,11 @@
 
         <div class="card" id="pix-card">
           <h3>PIX do recebedor</h3>
-          <p class="hint" id="pix-hint" style="margin-top:0">Somente o criador altera. Preencha chave, nome e cidade iguais ao banco; depois salve e gere o PIX nas despesas.</p>
+          <p class="hint" id="pix-hint" style="margin-top:0">Somente o criador altera. Celular com 10 dígitos (ex: 7999273882) vira automaticamente +55 com o 9º dígito.</p>
           <div id="pix-fields">
             <label class="field" for="cfg-pix-key">Chave PIX</label>
-            <input id="cfg-pix-key" type="text" placeholder="Ex: (79) 99999-9999 ou e-mail" autocomplete="off">
+            <input id="cfg-pix-key" type="text" placeholder="Ex: 7999273882 ou e-mail" autocomplete="off">
+            <p class="hint" id="pix-key-preview" style="margin-top:.35rem">A chave normalizada aparece aqui após digitar.</p>
             <label class="field" for="cfg-pix-name">Nome do recebedor</label>
             <input id="cfg-pix-name" type="text" placeholder="Nome completo no PIX" maxlength="25" autocomplete="off">
             <label class="field" for="cfg-pix-city">Cidade</label>
@@ -591,7 +592,7 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="app.js?v=20260723q"></script>
+  <script src="app.js?v=20260723r"></script>
 </body>
 </html>
 

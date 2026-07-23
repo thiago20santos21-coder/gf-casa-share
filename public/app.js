@@ -533,32 +533,101 @@
       .trim();
   }
 
+  function isValidDdd(ddd) {
+    const n = parseInt(ddd, 10);
+    return n >= 11 && n <= 99;
+  }
+
+  /** Converte telefone BR para E.164 (+55…). Celular com 10 dígitos ganha o 9º dígito. */
+  function normalizeBrPhoneDigits(digits) {
+    let d = String(digits || '').replace(/\D/g, '');
+    if (!d) return '';
+    // Evita +55+55
+    while (d.startsWith('55') && d.length > 11) {
+      const rest = d.slice(2);
+      if (rest.length === 10 || rest.length === 11) {
+        d = rest;
+        break;
+      }
+      if (rest.startsWith('55')) {
+        d = rest;
+        continue;
+      }
+      break;
+    }
+    // Já veio com 55 + nacional
+    if (d.startsWith('55') && (d.length === 12 || d.length === 13)) {
+      d = d.slice(2);
+    }
+    // Nacional 10 dígitos: DDD + 8 — celular antigo → insere 9
+    if (d.length === 10 && isValidDdd(d.slice(0, 2))) {
+      const ddd = d.slice(0, 2);
+      const local = d.slice(2);
+      if (/^[6-9]/.test(local)) {
+        d = ddd + '9' + local; // 7999273882 → 79999273882
+      }
+    }
+    // Nacional 11 dígitos com 9 após DDD
+    if (d.length === 11 && isValidDdd(d.slice(0, 2)) && d.charAt(2) === '9') {
+      return '+55' + d;
+    }
+    // Fixo 10 dígitos (após possível não-inserção)
+    if (d.length === 10 && isValidDdd(d.slice(0, 2))) {
+      return '+55' + d;
+    }
+    return '';
+  }
+
   function normalizePixKey(raw) {
-    let chave = String(raw || '').trim().replace(/\s+/g, '');
+    const original = String(raw || '').trim();
+    let chave = original.replace(/\s+/g, '');
     if (!chave) return '';
+
+    // E-mail
     if (chave.includes('@')) return chave.toLowerCase();
+
+    // Chave aleatória EVP (UUID)
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(chave)) {
       return chave.toLowerCase();
     }
+
     const digits = chave.replace(/\D/g, '');
-    // Telefone E.164
-    if (chave.startsWith('+')) {
-      return '+' + digits;
+
+    // Telefone (com +, 55, 10 ou 11 dígitos nacionais)
+    const looksPhone =
+      chave.startsWith('+') ||
+      /^55\d{10,11}$/.test(digits) ||
+      (/^\d{10}$/.test(digits) && isValidDdd(digits.slice(0, 2)) && /^[6-9]/.test(digits.slice(2))) ||
+      (/^\d{11}$/.test(digits) && isValidDdd(digits.slice(0, 2)) && digits.charAt(2) === '9');
+
+    if (looksPhone) {
+      const phone = normalizeBrPhoneDigits(digits);
+      if (phone) return phone;
     }
-    if (/^55\d{10,11}$/.test(digits)) {
-      return '+' + digits;
-    }
-    // Celular BR 11 dígitos (DDD + 9…)
-    if (/^\d{11}$/.test(digits) && digits.charAt(2) === '9') {
-      return '+55' + digits;
-    }
-    // Fixo BR 10 dígitos
-    if (/^\d{10}$/.test(digits) && /[()\-]/.test(String(raw || ''))) {
-      return '+55' + digits;
-    }
-    // CPF / CNPJ
+
+    // CPF (11) / CNPJ (14) — só dígitos, sem tratar como telefone
     if (/^\d{11}$/.test(digits) || /^\d{14}$/.test(digits)) return digits;
+
     return chave;
+  }
+
+  function updatePixKeyPreview() {
+    const el = $('pix-key-preview');
+    if (!el) return;
+    const raw = ($('cfg-pix-key') && $('cfg-pix-key').value) || '';
+    const norm = normalizePixKey(raw);
+    if (!raw.trim()) {
+      el.textContent = 'A chave normalizada aparece aqui após digitar.';
+      return;
+    }
+    if (!norm) {
+      el.textContent = 'Não foi possível interpretar a chave.';
+      return;
+    }
+    el.textContent =
+      norm === raw.trim().replace(/\s+/g, '')
+        ? 'Chave no PIX: ' + norm
+        : 'Você digitou “' + raw.trim() + '” → no PIX será: ' + norm;
   }
 
   function gerarPixPayload(chaveRaw, nomeRaw, cidadeRaw, valor) {
@@ -1061,6 +1130,7 @@
     $('cfg-pix-key').value = (currentGroup.pix && currentGroup.pix.chave) || '';
     $('cfg-pix-name').value = (currentGroup.pix && currentGroup.pix.nome) || '';
     $('cfg-pix-city').value = (currentGroup.pix && currentGroup.pix.cidade) || '';
+    updatePixKeyPreview();
 
     const creator = isCreator();
     const admin = isAdmin();
@@ -1658,7 +1728,8 @@
         pix: { chave, nome, cidade }
       });
       $('cfg-pix-key').value = chave;
-      toast('PIX salvo');
+      updatePixKeyPreview();
+      toast('PIX salvo — chave: ' + chave);
     } catch (err) {
       $('cfg-error').textContent = err.message || 'Erro ao salvar.';
     }
@@ -1770,11 +1841,17 @@
       return;
     }
 
+    // Confirma que a chave no payload é a normalizada
+    if (!pixPayloadAtual.includes(chaveNorm)) {
+      toast('Chave não entrou no código PIX — tente salvar de novo');
+      return;
+    }
+
     $('pix-code-display').value = pixPayloadAtual;
     $('texto-grupo').value = texto;
-    $('pix-modal-hint').textContent = isCreator()
-      ? `Você recebe. Cada pagante deve transferir R$ ${fmt(porPagante)}.`
-      : `Sua parte: R$ ${fmt(porPagante)} (criador não paga).`;
+    $('pix-modal-hint').textContent = (isCreator()
+      ? `Você recebe. Cada pagante: R$ ${fmt(porPagante)}.`
+      : `Sua parte: R$ ${fmt(porPagante)}.`) + ' Chave: ' + chaveNorm;
     // garante container do QR
     const wrap = $('qr-wrap');
     if (wrap && !wrap.querySelector('#qr-img')) {
@@ -1939,6 +2016,10 @@
   $('btn-add-shop').onclick = adicionarCompra;
   $('btn-send-msg').onclick = enviarMsg;
   $('btn-save-cfg').onclick = salvarConfigGrupo;
+  if ($('cfg-pix-key')) {
+    $('cfg-pix-key').addEventListener('input', updatePixKeyPreview);
+    $('cfg-pix-key').addEventListener('change', updatePixKeyPreview);
+  }
   $('btn-copy-invite').onclick = copiarConvite;
   $('btn-leave-group').onclick = sairDoGrupo;
   if ($('btn-delete-group')) $('btn-delete-group').onclick = apagarGrupo;
@@ -2036,7 +2117,7 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-        .register('/sw.js?v=16', { updateViaCache: 'none' })
+        .register('/sw.js?v=17', { updateViaCache: 'none' })
         .then((reg) => {
           reg.update().catch(() => {});
           if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -2049,7 +2130,7 @@
           updateInstallUI();
         })
         .catch(() => {
-          navigator.serviceWorker.register('./sw.js?v=16', { updateViaCache: 'none' }).catch(() => {});
+          navigator.serviceWorker.register('./sw.js?v=17', { updateViaCache: 'none' }).catch(() => {});
         });
     }
 
