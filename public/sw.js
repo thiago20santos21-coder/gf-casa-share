@@ -1,12 +1,12 @@
-﻿/* Casa Share — Service Worker v9 (app icon bust) */
-const CACHE_NAME = 'casa-share-v9';
+/* Casa Share — Service Worker v10 (app icon bust) */
+const CACHE_NAME = 'casa-share-v10';
 const PRECACHE = [
   './',
   './index.html',
   './app.js',
-  './app.js?v=20260723i',
+  './app.js?v=20260723j',
   './manifest.json',
-  './manifest.json?v=20260723i',
+  './manifest.json?v=20260723j',
   './icons/casa-192.png',
   './icons/casa-512.png',
   './icons/casa-maskable-192.png',
@@ -120,7 +120,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  let payload = { title: 'Casa Share', body: 'Nova atualizaÃ§Ã£o no grupo' };
+  let payload = { title: 'Casa Share', body: 'Nova atualização no grupo' };
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
   } catch (_) {}

@@ -1,0 +1,1 @@
+index.html:566: <button class="modal-close" type="button" id="btn-close-modal" aria-label="Fechar">Ã—</button>

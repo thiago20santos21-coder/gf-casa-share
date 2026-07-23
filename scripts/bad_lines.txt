@@ -1,0 +1,122 @@
+app.js:1: /* Casa Share â€” app logic */
+app.js:122: 'auth/email-already-in-use': 'Este e-mail jÃ¡ estÃ¡ em uso.',
+app.js:123: 'auth/invalid-email': 'E-mail invÃ¡lido.',
+app.js:124: 'auth/weak-password': 'Senha fraca (mÃ­n. 6 caracteres).',
+app.js:125: 'auth/user-not-found': 'Conta nÃ£o encontrada.',
+app.js:127: 'auth/invalid-credential': 'E-mail ou senha invÃ¡lidos.',
+app.js:130: 'Auth ainda nÃ£o foi ativado no Firebase Console. Abra Authentication â†’ ComeÃ§ar â†’ E-mail/senha.',
+app.js:131: 'auth/operation-not-allowed': 'Login por e-mail ainda nÃ£o estÃ¡ habilitado no Firebase Console.'
+app.js:195: $('pill-offline').textContent = pending ? `Offline â€” ${pending} na fila` : 'Offline';
+app.js:198: $('pill-offline').textContent = `Sincronizando ${pending}â€¦`;
+app.js:259: if (!left) toast('AlteraÃ§Ãµes sincronizadas');
+app.js:268: toast('Salvo offline â€” sincroniza ao conectar');
+app.js:277: toast('Sem conexÃ£o estÃ¡vel â€” na fila');
+app.js:296: if (statusEl) statusEl.textContent = 'Este navegador nÃ£o suporta notificaÃ§Ãµes.';
+app.js:301: if (statusEl) statusEl.textContent = 'NotificaÃ§Ãµes ativas neste aparelho.';
+app.js:305: if (statusEl) statusEl.textContent = 'Bloqueadas nas configuraÃ§Ãµes do navegador/sistema. Ative manualmente.';
+app.js:309: if (statusEl) statusEl.textContent = 'Toque em â€œAtivar notificaÃ§Ãµesâ€ para receber alertas.';
+app.js:315: if (statusEl) statusEl.textContent = 'NotificaÃ§Ãµes ativas neste aparelho.';
+app.js:316: await notifyUser('Casa Share', 'NotificaÃ§Ãµes ligadas. VocÃª serÃ¡ avisado de novidades no grupo.', 'notif-on', true);
+app.js:319: if (statusEl) statusEl.textContent = 'PermissÃ£o negada.';
+app.js:489: name: user.displayName || (user.email || '').split('@')[0] || 'UsuÃ¡rio',
+app.js:549: name: userProfile.name || currentUser.displayName || 'UsuÃ¡rio',
+app.js:572: toast('Grupo criado â€” vocÃª recebe o PIX');
+app.js:575: $('group-error').textContent = err.message || 'NÃ£o foi possÃ­vel criar o grupo.';
+app.js:583: if (!data.groupId) throw new Error('Convite incompleto. PeÃ§a um novo cÃ³digo.');
+app.js:587: // Requires get-by-id; without list permission we can't query â€” recreate invite index.
+app.js:588: throw new Error('CÃ³digo invÃ¡lido. Confira se digitou certo (sem espaÃ§os).');
+app.js:606: if (!gSnap.exists) throw new Error('Grupo nÃ£o encontrado para este cÃ³digo.');
+app.js:611: name: userProfile.name || currentUser.displayName || 'UsuÃ¡rio',
+app.js:625: let msg = err.message || 'NÃ£o foi possÃ­vel entrar.';
+app.js:627: msg = 'Sem permissÃ£o para entrar neste grupo. Atualize a pÃ¡gina e tente de novo.';
+app.js:670: toast('VocÃª foi removido do grupo');
+app.js:700: notifyUser('Nova despesa', `${data.createdByName || 'AlguÃ©m'}: ${data.descricao} â€” R$ ${fmt(data.valor)}`, 'expense-' + ch.doc.id);
+app.js:728: notifyUser('Lista de compras', `${data.createdByName || 'AlguÃ©m'} adicionou: ${data.text}`, 'shop-' + ch.doc.id);
+app.js:734: notifyUser('Item comprado', `${data.doneByName || 'AlguÃ©m'} comprou: ${data.text}`, 'shop-done-' + ch.doc.id);
+app.js:791: (userProfile && userProfile.name ? userProfile.name + ' Â· ' : '') +
+app.js:793: ' Â· ' +
+app.js:799: ? 'VocÃª Ã© o CRIADOR: edita PIX, promove admins, remove membros e pode apagar o grupo.'
+app.js:801: ? 'VocÃª Ã© ADMIN: pode remover membros e moderar conteÃºdo. PIX sÃ³ o criador edita.'
+app.js:802: : 'VocÃª Ã© MEMBRO: use despesas/compras/chat. Pode sair do grupo. PIX Ã© sÃ³ leitura.';
+app.js:826: ? 'Somente vocÃª (criador) pode alterar a chave PIX.'
+app.js:827: : 'PIX bloqueado para ediÃ§Ã£o â€” somente o criador altera.';
+app.js:845: ? 'Como criador, use Apagar grupo (nÃ£o Ã© possÃ­vel â€œsairâ€ sem apagar).'
+app.js:846: : 'Use Sair deste grupo para deixar o espaÃ§o compartilhado.';
+app.js:853: membersHelp.textContent = 'Convide alguÃ©m com o cÃ³digo acima. Depois aparecerÃ£o botÃµes Tornar admin / Remover.';
+app.js:855: membersHelp.textContent = 'BotÃµes por membro: Tornar admin, Remover admin, Remover do grupo.';
+app.js:857: membersHelp.textContent = 'Como admin, vocÃª pode Remover outros membros (exceto o criador).';
+app.js:871: if (isRecv) tags += '<span class="member-tag">Criador Â· Recebe</span>';
+app.js:872: else if (userIsAdmin) tags += '<span class="member-tag admin">Admin Â· Paga</span>';
+app.js:873: else tags += '<span class="member-tag muted">Membro Â· Paga</span>';
+app.js:918: toast(err.message || 'Falha ao atualizar admin (permissÃ£o/regras)');
+app.js:925: toast('NÃ£o Ã© possÃ­vel remover o criador');
+app.js:958: 'Apagar permanentemente â€œ' + name + 'â€? Despesas, compras, chat e convite serÃ£o removidos.',
+app.js:962: const ok2 = await appConfirm('Tem certeza? Esta aÃ§Ã£o nÃ£o pode ser desfeita.', {
+app.js:963: title: 'ConfirmaÃ§Ã£o final',
+app.js:1036: $('total-por-pessoa').textContent = n > 0 ? `R$ ${fmt(porPagante)}` : 'â€”';
+app.js:1038: $('label-por-pessoa').textContent = n > 0 ? `Por pagante (Ã·${n})` : 'Sem pagantes';
+app.js:1062: createdByName: userProfile.name || currentUser.displayName || 'AlguÃ©m',
+app.js:1065: // offline: serverTimestamp can't be queued as FieldValue â€” use Date
+app.js:1130: : 'Por ' + escapeHTML(item.createdByName || 'alguÃ©m')
+app.js:1152: createdByName: userProfile.name || currentUser.displayName || 'AlguÃ©m',
+app.js:1167: doneByName: !item.done ? userProfile.name || currentUser.displayName || 'AlguÃ©m' : null,
+app.js:1205: el.innerHTML = `${mine ? '' : `<div class="msg-author">${escapeHTML(m.name || 'AlguÃ©m')}</div>`}
+app.js:1232: el.innerHTML = `${mine ? '' : `<div class="msg-author">${escapeHTML(m.name || 'AlguÃ©m')}</div>`}
+app.js:1235: <span class="msg-time${edited ? ' msg-edited' : ''}">${time}${edited ? ' Â· editada' : ''}</span>
+app.js:1262: toast('MÃ¡ximo 1000 caracteres');
+app.js:1292: name: userProfile.name || currentUser.displayName || 'AlguÃ©m',
+app.js:1323: toast('CÃ³digo copiado');
+app.js:1328: toast('Como criador, use â€œApagar grupoâ€ (ou promova alguÃ©m e peÃ§a para recriar).');
+app.js:1331: const ok = await appConfirm('Sair deste grupo? VocÃª deixarÃ¡ de ver despesas, compras e chat.', {
+app.js:1346: toast(err.message || 'NÃ£o foi possÃ­vel sair');
+app.js:1355: toast('VocÃª saiu do grupo');
+app.js:1374: toast('Convide membros â€” o criador nÃ£o paga o rateio');
+app.js:1383: detalhes += `â€¢ ${g.descricao}: R$ ${fmt(g.valor)}\n`;
+app.js:1389: let texto = `*FECHAMENTO â€” ${currentGroup.name || 'Grupo'}*\n\n`;
+app.js:1394: texto += `_O criador (${creatorName}) recebe e nÃ£o paga._\n\n`;
+app.js:1401: ? `VocÃª recebe. Cada pagante deve transferir R$ ${fmt(porPagante)}.`
+app.js:1402: : `Sua parte: R$ ${fmt(porPagante)} (criador nÃ£o paga).`;
+app.js:1435: b.textContent = 'CÃ³digo PIX copiado';
+app.js:1461: hint.textContent = 'No iPhone/iPad use Safari: Compartilhar â†’ Adicionar Ã  Tela de InÃ­cio.';
+app.js:1463: hint.textContent = 'Use o botÃ£o abaixo ou o menu do navegador (Instalar app / Adicionar Ã  tela inicial).';
+app.js:1477: toast('App jÃ¡ estÃ¡ instalado');
+app.js:1486: if (choice && choice.outcome === 'accepted') toast('Instalandoâ€¦');
+app.js:1493: toast('Safari â†’ Compartilhar â†’ Tela de InÃ­cio');
+index.html:312: <div>Carregando Casa Shareâ€¦</div>
+index.html:335: <input id="auth-pass" type="password" required minlength="6" placeholder="MÃ­nimo 6 caracteres" autocomplete="current-password">
+index.html:347: <p>Crie um espaÃ§o compartilhado ou entre com o cÃ³digo</p>
+index.html:351: <input id="group-name" type="text" placeholder="Ex: Casa / RepÃºblica">
+index.html:352: <label class="field" for="group-people">Pessoas no grupo (inclui vocÃª)</label>
+index.html:354: <p class="hint">Quem cria o grupo recebe o PIX e nÃ£o entra no rateio. Os demais pagam.</p>
+index.html:358: <label class="field" for="join-code">CÃ³digo do convite</label>
+index.html:373: <span class="pill offline hidden" id="pill-offline">Offline â€” fila ativa</span>
+index.html:374: <span class="pill receiver hidden" id="pill-receiver">VocÃª recebe</span>
+index.html:387: VocÃª Ã© o criador do grupo: recebe o PIX e <strong>nÃ£o paga</strong> o rateio. O valor Ã© dividido sÃ³ entre os demais membros.
+index.html:406: <label for="input-descricao">DescriÃ§Ã£o</label>
+index.html:407: <input type="text" id="input-descricao" placeholder="Ex: Aluguel, Internetâ€¦">
+index.html:423: <th style="text-align:center">AÃ§Ã£o</th>
+index.html:432: <button class="btn btn-ghost btn-sm" type="button" id="btn-undo">Desfazer Ãºltimo</button>
+index.html:441: <input type="text" id="shop-input" placeholder="Ex: Leite, pÃ£o, detergenteâ€¦">
+index.html:450: <div id="empty-shop" class="empty">Lista vazia â€” adicione o primeiro item.</div>
+index.html:458: <input type="text" id="chat-input" placeholder="Escreva uma mensagemâ€¦" maxlength="1000">
+index.html:467: <p class="hint" id="role-banner-text" style="margin:0;font-size:.95rem;color:var(--text)">Carregandoâ€¦</p>
+index.html:468: <p class="hint" id="role-banner-help" style="margin-top:.45rem">Abra esta aba (Grupo) para instalar o app, ativar notificaÃ§Ãµes e gerenciar membros.</p>
+index.html:473: <p class="hint" id="install-hint" style="margin-top:0">Adicione Ã  tela inicial para abrir como aplicativo.</p>
+index.html:480: <li id="install-step-2">iPhone/iPad (Safari): botÃ£o Compartilhar â†’ <strong>Adicionar Ã  Tela de InÃ­cio</strong>.</li>
+index.html:481: <li>Depois abra pelo Ã­cone <strong>Casa Share</strong> na tela inicial.</li>
+index.html:486: <h3>NotificaÃ§Ãµes</h3>
+index.html:488: <button class="btn btn-primary" style="width:100%;margin-top:.6rem" type="button" id="btn-enable-notifs">Ativar notificaÃ§Ãµes</button>
+index.html:489: <div class="hint" id="notif-status" style="margin-top:.5rem">Toque no botÃ£o acima para permitir alertas.</div>
+index.html:494: <p class="hint" style="margin-top:0">Quem entra com o cÃ³digo paga o rateio. O criador recebe o PIX.</p>
+index.html:496: <div style="font-size:.72rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em">CÃ³digo</div>
+index.html:498: <button class="btn btn-primary btn-sm" style="width:auto;margin:0" type="button" id="btn-copy-invite">Copiar cÃ³digo</button>
+index.html:502: <strong>PapÃ©is:</strong>
+index.html:503: Criador â€” PIX, admins, remover membros, apagar grupo.
+index.html:504: Admin â€” remover membros e moderar conteÃºdo.
+index.html:505: Membro â€” usar o app e sair do grupo; nÃ£o edita PIX.
+index.html:508: <h3 style="margin-top:.4rem">Membros e gestÃ£o</h3>
+index.html:509: <p class="hint" id="members-help" style="margin-top:0">Se vocÃª Ã© criador, use os botÃµes em cada pessoa para admin/remover.</p>
+index.html:559: <p><strong>Instalar no celular</strong>Adicione Ã  tela inicial para abrir como app.</p>
+index.html:561: <button class="btn btn-ghost btn-sm" type="button" id="btn-install-dismiss">Agora nÃ£o</button>
+index.html:566: <button class="modal-close" type="button" id="btn-close-modal" aria-label="Fechar">Ã—</button>
+sw.js:123: let payload = { title: 'Casa Share', body: 'Nova atualizaÃ§Ã£o no grupo' };

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -10,10 +10,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Casa Share">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="manifest" href="manifest.json?v=20260723i">
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/casa-192.png?v=20260723i">
-  <link rel="icon" type="image/png" sizes="512x512" href="icons/casa-512.png?v=20260723i">
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/casa-apple-180.png?v=20260723i">
+  <link rel="manifest" href="manifest.json?v=20260723j">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/casa-192.png?v=20260723j">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/casa-512.png?v=20260723j">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/casa-apple-180.png?v=20260723j">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -309,13 +309,13 @@
 <body>
   <div id="boot-screen">
     <div class="boot-spin"></div>
-    <div>Carregando Casa Shareâ€¦</div>
+    <div>Carregando Casa Share…</div>
   </div>
 
   <div id="auth-screen" class="hidden">
     <div class="wrap">
       <div class="brand">
-        <img class="brand-logo" src="icons/casa-192.png?v=20260723i" alt="Casa Share">
+        <img class="brand-logo" src="icons/casa-192.png?v=20260723j" alt="Casa Share">
         <div class="brand-mark">Casa Share</div>
         <p>Despesas, compras e chat sincronizados para o grupo</p>
       </div>
@@ -330,9 +330,9 @@
             <input id="auth-name" type="text" placeholder="Ex: Tiago" autocomplete="name">
           </div>
           <label class="field" for="auth-email">E-mail</label>
-          <input id="auth-email" type="email" required placeholder="voce@email.com" autocomplete="email">
+          <input id="auth-email" type="email" required placeholder="seu@email.com" autocomplete="email">
           <label class="field" for="auth-pass">Senha</label>
-          <input id="auth-pass" type="password" required minlength="6" placeholder="MÃ­nimo 6 caracteres" autocomplete="current-password">
+          <input id="auth-pass" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" autocomplete="current-password">
           <button class="btn btn-primary" type="submit" id="auth-submit">Entrar</button>
           <div class="form-error" id="auth-error"></div>
         </form>
@@ -344,18 +344,18 @@
     <div class="wrap">
       <div class="brand">
         <div class="brand-mark">Seu grupo</div>
-        <p>Crie um espaÃ§o compartilhado ou entre com o cÃ³digo</p>
+        <p>Crie um espaço compartilhado ou entre com o código</p>
       </div>
       <div class="card">
         <label class="field" for="group-name">Nome do grupo</label>
-        <input id="group-name" type="text" placeholder="Ex: Casa / RepÃºblica">
-        <label class="field" for="group-people">Pessoas no grupo (inclui vocÃª)</label>
+        <input id="group-name" type="text" placeholder="Ex: Casa / República">
+        <label class="field" for="group-people">Pessoas no grupo (inclui você)</label>
         <input id="group-people" type="number" min="2" max="20" value="3">
-        <p class="hint">Quem cria o grupo recebe o PIX e nÃ£o entra no rateio. Os demais pagam.</p>
+        <p class="hint">Quem cria o grupo recebe o PIX e não entra no rateio. Os demais membros pagam.</p>
         <button class="btn btn-primary" type="button" id="btn-criar-grupo">Criar grupo</button>
       </div>
       <div class="card">
-        <label class="field" for="join-code">CÃ³digo do convite</label>
+        <label class="field" for="join-code">Código do convite</label>
         <input id="join-code" type="text" placeholder="Ex: AB12CD" style="text-transform:uppercase;letter-spacing:.12em;font-weight:700">
         <button class="btn btn-gold" type="button" id="btn-entrar-grupo">Entrar no grupo</button>
         <div class="form-error" id="group-error"></div>
@@ -370,8 +370,8 @@
                 <h1 id="group-title">Grupo</h1>
         <div class="status-row">
           <span class="pill live" id="pill-live">Ao vivo</span>
-          <span class="pill offline hidden" id="pill-offline">Offline â€” fila ativa</span>
-          <span class="pill receiver hidden" id="pill-receiver">VocÃª recebe</span>
+          <span class="pill offline hidden" id="pill-offline">Offline — fila ativa</span>
+          <span class="pill receiver hidden" id="pill-receiver">Você recebe</span>
         </div>
       </div>
       <div class="topbar-actions">
@@ -384,7 +384,7 @@
     <main>
       <section class="page" id="page-expenses">
         <div class="receiver-banner" id="receiver-banner">
-          VocÃª Ã© o criador do grupo: recebe o PIX e <strong>nÃ£o paga</strong> o rateio. O valor Ã© dividido sÃ³ entre os demais membros.
+          Você é o criador do grupo: recebe o PIX e <strong>não paga</strong> o rateio. O valor é dividido só entre os demais membros.
         </div>
         <div class="summary-grid">
           <div class="summary-item">
@@ -403,8 +403,8 @@
         <div class="card">
           <div class="form-row">
             <div class="form-group" style="flex:2">
-              <label for="input-descricao">DescriÃ§Ã£o</label>
-              <input type="text" id="input-descricao" placeholder="Ex: Aluguel, Internetâ€¦">
+              <label for="input-descricao">Descrição</label>
+              <input type="text" id="input-descricao" placeholder="Ex: Aluguel, Internet…">
             </div>
             <div class="form-group">
               <label for="input-valor">Valor (R$)</label>
@@ -420,7 +420,7 @@
                 <tr>
                   <th>Despesa</th>
                   <th>Valor</th>
-                  <th style="text-align:center">AÃ§Ã£o</th>
+                  <th style="text-align:center">Ação</th>
                 </tr>
               </thead>
               <tbody id="corpo-tabela"></tbody>
@@ -429,7 +429,7 @@
           <div id="empty-expenses" class="empty">Nenhuma despesa ainda.</div>
           <button class="btn btn-gold" style="margin-top:1rem" id="btn-gerar-pix" type="button" disabled>Gerar resumo e PIX</button>
           <div class="actions-bar">
-            <button class="btn btn-ghost btn-sm" type="button" id="btn-undo">Desfazer Ãºltimo</button>
+            <button class="btn btn-ghost btn-sm" type="button" id="btn-undo">Desfazer último</button>
             <button class="btn btn-danger btn-sm" type="button" id="btn-clear">Apagar todos</button>
           </div>
         </div>
@@ -438,7 +438,7 @@
       <section class="page hidden" id="page-shopping">
         <div class="card">
           <div class="shop-add">
-            <input type="text" id="shop-input" placeholder="Ex: Leite, pÃ£o, detergenteâ€¦">
+            <input type="text" id="shop-input" placeholder="Ex: Leite, pão, detergente…">
             <button class="btn btn-primary" style="width:auto;margin:0" type="button" id="btn-add-shop">Add</button>
           </div>
           <div class="shop-filters">
@@ -447,7 +447,7 @@
             <button type="button" class="chip" data-filter="all">Todos</button>
           </div>
           <div class="shop-list" id="shop-list"></div>
-          <div id="empty-shop" class="empty">Lista vazia â€” adicione o primeiro item.</div>
+          <div id="empty-shop" class="empty">Lista vazia — adicione o primeiro item.</div>
         </div>
       </section>
 
@@ -455,7 +455,7 @@
         <div class="card chat-page">
           <div class="chat-msgs" id="chat-msgs"></div>
           <div class="chat-compose">
-            <input type="text" id="chat-input" placeholder="Escreva uma mensagemâ€¦" maxlength="1000">
+            <input type="text" id="chat-input" placeholder="Escreva uma mensagem…" maxlength="1000">
             <button class="btn btn-primary" type="button" id="btn-send-msg">Enviar</button>
           </div>
         </div>
@@ -464,49 +464,49 @@
       <section class="page hidden" id="page-settings">
         <div class="card" id="role-banner-card" style="border-color:rgba(61,154,139,.35)">
           <h3 style="margin-bottom:.35rem">Seu papel neste grupo</h3>
-          <p class="hint" id="role-banner-text" style="margin:0;font-size:.95rem;color:var(--text)">Carregandoâ€¦</p>
-          <p class="hint" id="role-banner-help" style="margin-top:.45rem">Abra esta aba (Grupo) para instalar o app, ativar notificaÃ§Ãµes e gerenciar membros.</p>
+          <p class="hint" id="role-banner-text" style="margin:0;font-size:.95rem;color:var(--text)">Carregando…</p>
+          <p class="hint" id="role-banner-help" style="margin-top:.45rem">Nesta aba você instala o app, ativa notificações e gerencia os membros.</p>
         </div>
 
         <div class="card" id="install-card">
           <h3>Instalar no celular</h3>
-          <p class="hint" id="install-hint" style="margin-top:0">Adicione Ã  tela inicial para abrir como aplicativo.</p>
+          <p class="hint" id="install-hint" style="margin-top:0">Adicione à tela inicial para abrir como um aplicativo.</p>
           <div class="install-card-actions">
             <button class="btn btn-primary" type="button" id="btn-install-settings" style="width:auto;margin:0">Instalar app</button>
             <button class="btn btn-ghost" type="button" id="btn-install-howto" style="width:auto;margin:0">Como instalar</button>
           </div>
           <ol class="install-steps hidden" id="install-howto">
-            <li id="install-step-1">Android/Chrome: toque em <strong>Instalar app</strong> ou menu â‹® â†’ Instalar app.</li>
-            <li id="install-step-2">iPhone/iPad (Safari): botÃ£o Compartilhar â†’ <strong>Adicionar Ã  Tela de InÃ­cio</strong>.</li>
-            <li>Depois abra pelo Ã­cone <strong>Casa Share</strong> na tela inicial.</li>
+            <li id="install-step-1">Android/Chrome: toque em <strong>Instalar app</strong> ou menu â‹® → Instalar app.</li>
+            <li id="install-step-2">iPhone/iPad (Safari): botão Compartilhar → <strong>Adicionar à Tela de Início</strong>.</li>
+            <li>Depois abra pelo ícone <strong>Casa Share</strong> na tela inicial.</li>
           </ol>
         </div>
 
         <div class="card">
-          <h3>NotificaÃ§Ãµes</h3>
+          <h3>Notificações</h3>
           <p class="hint" style="margin-top:0">Receba alertas de chat, despesas, compras e PIX neste aparelho.</p>
-          <button class="btn btn-primary" style="width:100%;margin-top:.6rem" type="button" id="btn-enable-notifs">Ativar notificaÃ§Ãµes</button>
-          <div class="hint" id="notif-status" style="margin-top:.5rem">Toque no botÃ£o acima para permitir alertas.</div>
+          <button class="btn btn-primary" style="width:100%;margin-top:.6rem" type="button" id="btn-enable-notifs">Ativar notificações</button>
+          <div class="hint" id="notif-status" style="margin-top:.5rem">Toque no botão acima para permitir alertas.</div>
         </div>
 
         <div class="card">
           <h3>Convide o grupo</h3>
-          <p class="hint" style="margin-top:0">Quem entra com o cÃ³digo paga o rateio. O criador recebe o PIX.</p>
+          <p class="hint" style="margin-top:0">Quem entra com o código paga o rateio. O criador recebe o PIX.</p>
           <div class="invite-box">
-            <div style="font-size:.72rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em">CÃ³digo</div>
+            <div style="font-size:.72rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em">Código</div>
             <div class="invite-code" id="invite-code-display">------</div>
-            <button class="btn btn-primary btn-sm" style="width:auto;margin:0" type="button" id="btn-copy-invite">Copiar cÃ³digo</button>
+            <button class="btn btn-primary btn-sm" style="width:auto;margin:0" type="button" id="btn-copy-invite">Copiar código</button>
           </div>
 
           <div class="roles-box" id="roles-help">
-            <strong>PapÃ©is:</strong>
-            Criador â€” PIX, admins, remover membros, apagar grupo.
-            Admin â€” remover membros e moderar conteÃºdo.
-            Membro â€” usar o app e sair do grupo; nÃ£o edita PIX.
+            <strong>Papéis:</strong>
+            Criador — edita o PIX, define admins, remove membros e apaga o grupo.
+            Admin — remove membros e modera o conteúdo.
+            Membro — usa o app e pode sair do grupo; não edita o PIX.
           </div>
 
-          <h3 style="margin-top:.4rem">Membros e gestÃ£o</h3>
-          <p class="hint" id="members-help" style="margin-top:0">Se vocÃª Ã© criador, use os botÃµes em cada pessoa para admin/remover.</p>
+          <h3 style="margin-top:.4rem">Membros e gestão</h3>
+          <p class="hint" id="members-help" style="margin-top:0">Se você é o criador, use os botões em cada pessoa para tornar admin ou remover.</p>
           <div class="members" id="members-list"></div>
         </div>
 
@@ -556,14 +556,14 @@
   </div>
 
   <div class="install-banner" id="install-banner">
-    <p><strong>Instalar no celular</strong>Adicione Ã  tela inicial para abrir como app.</p>
+    <p><strong>Instalar no celular</strong> — adicione à tela inicial para abrir como app.</p>
     <button class="btn btn-primary btn-sm" style="width:auto;margin:0" type="button" id="btn-install">Instalar</button>
-    <button class="btn btn-ghost btn-sm" type="button" id="btn-install-dismiss">Agora nÃ£o</button>
+    <button class="btn btn-ghost btn-sm" type="button" id="btn-install-dismiss">Agora não</button>
   </div>
 
   <div class="modal-overlay" id="pix-modal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pix-modal-title">
-      <button class="modal-close" type="button" id="btn-close-modal" aria-label="Fechar">Ã—</button>
+      <button class="modal-close" type="button" id="btn-close-modal" aria-label="Fechar">&times;</button>
       <h2 id="pix-modal-title">Resumo e PIX</h2>
       <p class="hint" id="pix-modal-hint" style="margin:-.4rem 0 1rem;text-align:center"></p>
       <div class="qr-container" id="qr-wrap"><img id="qr-img" alt="QR Code PIX"></div>
@@ -590,7 +590,7 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="app.js?v=20260723i"></script>
+  <script src="app.js?v=20260723j"></script>
 </body>
 </html>
 
