@@ -192,6 +192,12 @@
       case 'addMessage':
         await refBase().collection('messages').add(op.payload);
         break;
+      case 'updateMessage':
+        await refBase().collection('messages').doc(op.docId).update(op.payload);
+        break;
+      case 'deleteMessage':
+        await refBase().collection('messages').doc(op.docId).delete();
+        break;
       case 'updateGroup':
         await refBase().update(op.payload);
         break;
@@ -487,22 +493,34 @@
     }
   }
 
+  async function resolveInvite(code) {
+    const inv = await db.collection('invites').doc(code).get();
+    if (inv.exists) {
+      const data = inv.data() || {};
+      if (!data.groupId) throw new Error('Convite incompleto. Peça um novo código.');
+      return { groupId: data.groupId, groupName: data.groupName || '' };
+    }
+    // Fallback: some older groups may only store inviteCode on the group doc.
+    // Requires get-by-id; without list permission we can't query — recreate invite index.
+    throw new Error('Código inválido. Confira se digitou certo (sem espaços).');
+  }
+
   async function entrarGrupo() {
     $('group-error').textContent = '';
-    const code = $('join-code').value.trim().toUpperCase();
+    const code = $('join-code').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    $('join-code').value = code;
     if (code.length < 4) {
       $('join-code').classList.add('shake');
       setTimeout(() => $('join-code').classList.remove('shake'), 400);
       return;
     }
+    $('btn-entrar-grupo').disabled = true;
     try {
-      const inv = await db.collection('invites').doc(code).get();
-      if (!inv.exists) throw new Error('Código inválido.');
-      const { groupId: gid, groupName } = inv.data();
+      const { groupId: gid, groupName } = await resolveInvite(code);
       const gRef = db.collection('groups').doc(gid);
       await db.runTransaction(async (tx) => {
         const gSnap = await tx.get(gRef);
-        if (!gSnap.exists) throw new Error('Grupo não encontrado.');
+        if (!gSnap.exists) throw new Error('Grupo não encontrado para este código.');
         const data = gSnap.data();
         if ((data.memberIds || []).includes(currentUser.uid)) return;
         const member = {
@@ -520,8 +538,14 @@
       await entrarNoApp(gid);
       toast('Entrou em ' + (groupName || 'grupo'));
     } catch (err) {
-      console.error(err);
-      $('group-error').textContent = err.message || 'Não foi possível entrar.';
+      console.error('entrarGrupo', err);
+      let msg = err.message || 'Não foi possível entrar.';
+      if (err.code === 'permission-denied') {
+        msg = 'Sem permissão para entrar neste grupo. Atualize a página e tente de novo.';
+      }
+      $('group-error').textContent = msg;
+    } finally {
+      $('btn-entrar-grupo').disabled = false;
     }
   }
 
@@ -852,6 +876,8 @@
     await runWrite({ action: 'deleteShop', docId: id });
   }
 
+  let editingMsgId = null;
+
   function renderChat() {
     const box = $('chat-msgs');
     const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
@@ -860,18 +886,96 @@
       box.innerHTML = '<div class="empty">Nenhuma mensagem ainda.</div>';
       return;
     }
+    const creator = isCreator();
     messages.forEach((m) => {
       const mine = m.uid === currentUser.uid;
+      const canEdit = mine;
+      const canDelete = mine || creator;
       const el = document.createElement('div');
       el.className = 'msg ' + (mine ? 'mine' : 'theirs');
+      el.dataset.id = m.id;
+
       const ts = m.createdAt && m.createdAt.toDate ? m.createdAt.toDate() : null;
       const time = ts ? ts.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+      const edited = !!m.editedAt;
+
+      if (editingMsgId === m.id && canEdit) {
+        el.innerHTML = `${mine ? '' : `<div class="msg-author">${escapeHTML(m.name || 'Alguém')}</div>`}
+          <div class="msg-edit-row">
+            <textarea maxlength="1000" class="msg-edit-input">${escapeHTML(m.text || '')}</textarea>
+            <div class="msg-edit-actions">
+              <button type="button" class="btn btn-ghost btn-sm msg-cancel">Cancelar</button>
+              <button type="button" class="btn btn-primary btn-sm msg-save" style="width:auto;margin:0">Salvar</button>
+            </div>
+          </div>`;
+        const ta = el.querySelector('.msg-edit-input');
+        el.querySelector('.msg-cancel').onclick = () => {
+          editingMsgId = null;
+          renderChat();
+        };
+        el.querySelector('.msg-save').onclick = () => salvarEdicaoMsg(m.id, ta.value);
+        box.appendChild(el);
+        ta.focus();
+        ta.setSelectionRange(ta.value.length, ta.value.length);
+        return;
+      }
+
+      const actions = canEdit || canDelete
+        ? `<div class="msg-actions">
+            ${canEdit ? '<button type="button" class="msg-edit">Editar</button>' : ''}
+            ${canDelete ? '<button type="button" class="danger msg-del">Apagar</button>' : ''}
+          </div>`
+        : '';
+
       el.innerHTML = `${mine ? '' : `<div class="msg-author">${escapeHTML(m.name || 'Alguém')}</div>`}
-        <div class="msg-text">${escapeHTML(m.text)}</div>
-        <div class="msg-time">${time}</div>`;
+        <div class="msg-text">${escapeHTML(m.text || '')}</div>
+        <div class="msg-meta">
+          <span class="msg-time${edited ? ' msg-edited' : ''}">${time}${edited ? ' · editada' : ''}</span>
+          ${actions}
+        </div>`;
+
+      const editBtn = el.querySelector('.msg-edit');
+      const delBtn = el.querySelector('.msg-del');
+      if (editBtn) {
+        editBtn.onclick = () => {
+          editingMsgId = m.id;
+          renderChat();
+        };
+      }
+      if (delBtn) {
+        delBtn.onclick = () => apagarMsg(m);
+      }
       box.appendChild(el);
     });
-    if (nearBottom) box.scrollTop = box.scrollHeight;
+    if (nearBottom || editingMsgId) box.scrollTop = box.scrollHeight;
+  }
+
+  async function salvarEdicaoMsg(id, raw) {
+    const text = String(raw || '').trim();
+    if (!text) {
+      toast('Mensagem vazia');
+      return;
+    }
+    if (text.length > 1000) {
+      toast('Máximo 1000 caracteres');
+      return;
+    }
+    const payload = {
+      text,
+      editedAt: navigator.onLine ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+    };
+    await runWrite({ action: 'updateMessage', docId: id, payload });
+    editingMsgId = null;
+    toast('Mensagem editada');
+  }
+
+  async function apagarMsg(m) {
+    const mine = m.uid === currentUser.uid;
+    const label = mine ? 'Apagar sua mensagem?' : 'Apagar mensagem de ' + (m.name || 'membro') + '?';
+    if (!confirm(label)) return;
+    await runWrite({ action: 'deleteMessage', docId: m.id });
+    if (editingMsgId === m.id) editingMsgId = null;
+    toast('Mensagem apagada');
   }
 
   async function enviarMsg() {

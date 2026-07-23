@@ -11,6 +11,15 @@ service cloud.firestore {
         && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
     }
 
+    // Join flow: only memberIds/members change, and the caller adds only themselves.
+    function isSelfJoin() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
+        && !(request.auth.uid in resource.data.memberIds)
+        && request.auth.uid in request.resource.data.memberIds
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1;
+    }
+
     match /users/{userId} {
       allow read: if signedIn();
       allow create, update: if signedIn() && request.auth.uid == userId;
@@ -18,11 +27,17 @@ service cloud.firestore {
     }
 
     match /groups/{groupId} {
-      allow read: if isMember(groupId);
+      // get by ID is required to join (invite doc reveals groupId).
+      // list stays closed so people can't enumerate all groups.
+      allow get: if signedIn();
+      allow list: if false;
+
       allow create: if signedIn()
         && request.auth.uid in request.resource.data.memberIds
         && request.resource.data.keys().hasAll(['name', 'inviteCode', 'memberIds', 'members', 'personCount', 'pix', 'createdAt', 'createdBy']);
-      allow update: if isMember(groupId);
+
+      allow update: if isMember(groupId) || isSelfJoin();
+
       allow delete: if signedIn()
         && resource.data.createdBy == request.auth.uid;
 
@@ -35,14 +50,36 @@ service cloud.firestore {
       }
 
       match /messages/{docId} {
-        allow read, write: if isMember(groupId);
+        allow read: if isMember(groupId);
+
+        allow create: if isMember(groupId)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
+
+        allow update: if isMember(groupId)
+          && resource.data.uid == request.auth.uid
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['text', 'editedAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
+
+        allow delete: if isMember(groupId)
+          && (
+            resource.data.uid == request.auth.uid
+            || get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == request.auth.uid
+          );
       }
     }
 
-    // Lookup invite codes (public read of invite index only)
+    // Invite index: signed-in users can look up a code and create one when making a group.
     match /invites/{code} {
       allow read: if signedIn();
-      allow create, update: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.keys().hasAll(['groupId', 'groupName', 'createdAt']);
       allow delete: if signedIn();
     }
   }
