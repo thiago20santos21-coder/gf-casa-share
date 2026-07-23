@@ -1,57 +1,111 @@
-"""Generate full-bleed PWA icons (new filenames to bust install cache)."""
+# -*- coding: utf-8 -*-
+"""Full-bleed app icons: solid #0b0f14 square, no white corners."""
 from pathlib import Path
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
-SRC = Path(r"C:\Users\tiago\.cursor\projects\c-Users-tiago-Downloads-gf\assets\casa-share-icon.png")
 OUT = Path(r"C:\Users\tiago\Downloads\gf\public\icons")
 OUT.mkdir(parents=True, exist_ok=True)
-BG = (11, 15, 20, 255)
-
-src = Image.open(SRC).convert("RGBA")
-
-
-def flatten_full_bleed(size: int, content_scale: float = 0.78) -> Image.Image:
-    """Solid square (no baked rounded corners) — better for Android/iOS home screen."""
-    canvas = Image.new("RGBA", (size, size), BG)
-    # Strip any transparent corners from source by compositing onto BG first
-    flat = Image.new("RGBA", src.size, BG)
-    flat.paste(src, (0, 0), src)
-    # Crop center content roughly (source already has padding)
-    w, h = flat.size
-    # Use full image scaled
-    inner = int(size * content_scale)
-    resized = flat.resize((inner, inner), Image.Resampling.LANCZOS)
-    # Optional: cover any remaining rounded-corner artifacts by drawing a soft rect
-    # Center paste
-    off = (size - inner) // 2
-    canvas.paste(resized, (off, off), resized)
-    # Fill edges solid (ensure no alpha)
-    return canvas.convert("RGBA")
+BG = (11, 15, 20)  # #0b0f14
+TEAL = (61, 154, 139)
+TEAL_DARK = (42, 111, 101)
+GOLD = (232, 192, 125)
+GOLD_LIGHT = (240, 211, 153)
+GOLD_DARK = (138, 106, 46)
+WINDOW = (11, 15, 20)
 
 
-def maskable(size: int) -> Image.Image:
-    # More padding for safe zone (~80% content)
-    return flatten_full_bleed(size, content_scale=0.72)
+def draw_icon(size: int, content_scale: float = 0.72) -> Image.Image:
+    """Opaque RGB square — OS can round corners; we never leave white."""
+    img = Image.new("RGB", (size, size), BG)
+    draw = ImageDraw.Draw(img)
+
+    # Content box (safe zone)
+    pad = int(size * (1 - content_scale) / 2)
+    x0, y0 = pad, pad
+    x1, y1 = size - pad, size - pad
+    w, h = x1 - x0, y1 - y0
+
+    # House body
+    body_l = x0 + int(w * 0.18)
+    body_r = x0 + int(w * 0.78)
+    body_t = y0 + int(h * 0.38)
+    body_b = y0 + int(h * 0.88)
+    draw.rectangle([body_l, body_t, body_r, body_b], fill=TEAL)
+
+    # Roof triangle
+    peak = (x0 + w // 2, y0 + int(h * 0.12))
+    left = (body_l - int(w * 0.06), body_t + int(h * 0.04))
+    right = (body_r + int(w * 0.06), body_t + int(h * 0.04))
+    draw.polygon([peak, left, right], fill=TEAL)
+
+    # Chimney
+    ch_l = x0 + int(w * 0.62)
+    ch_r = x0 + int(w * 0.74)
+    ch_t = y0 + int(h * 0.18)
+    ch_b = y0 + int(h * 0.36)
+    draw.rectangle([ch_l, ch_t, ch_r, ch_b], fill=TEAL_DARK)
+
+    # Window 2x2
+    wx = x0 + int(w * 0.28)
+    wy = y0 + int(h * 0.48)
+    ws = int(w * 0.16)
+    gap = max(2, int(size * 0.01))
+    half = (ws - gap) // 2
+    draw.rectangle([wx, wy, wx + half, wy + half], fill=WINDOW)
+    draw.rectangle([wx + half + gap, wy, wx + ws, wy + half], fill=WINDOW)
+    draw.rectangle([wx, wy + half + gap, wx + half, wy + ws], fill=WINDOW)
+    draw.rectangle([wx + half + gap, wy + half + gap, wx + ws, wy + ws], fill=WINDOW)
+
+    # Coin
+    cx = x0 + int(w * 0.72)
+    cy = y0 + int(h * 0.72)
+    cr = int(w * 0.22)
+    draw.ellipse([cx - cr, cy - cr, cx + cr, cy + cr], fill=GOLD)
+    draw.ellipse(
+        [cx - int(cr * 0.82), cy - int(cr * 0.82), cx + int(cr * 0.82), cy + int(cr * 0.82)],
+        fill=GOLD_LIGHT,
+    )
+    # Dollar via text
+    font_size = max(12, int(cr * 1.15))
+    try:
+        font = ImageFont.truetype("arial.ttf", font_size)
+    except Exception:
+        try:
+            font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", font_size)
+        except Exception:
+            font = ImageFont.load_default()
+    text = "$"
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text((cx - tw / 2 - bbox[0], cy - th / 2 - bbox[1] - font_size * 0.05), text, fill=GOLD_DARK, font=font)
+
+    return img
 
 
-for size, name, scale in [
-    (192, "casa-192.png", 0.82),
-    (512, "casa-512.png", 0.82),
-    (180, "casa-apple-180.png", 0.86),
-    (192, "casa-maskable-192.png", 0.70),
-    (512, "casa-maskable-512.png", 0.70),
-]:
-    flatten_full_bleed(size, scale).save(OUT / name, optimize=True)
-    print("wrote", name)
+def save_all():
+    specs = [
+        ("casa-192.png", 192, 0.78),
+        ("casa-512.png", 512, 0.78),
+        ("casa-apple-180.png", 180, 0.80),
+        ("casa-maskable-192.png", 192, 0.68),
+        ("casa-maskable-512.png", 512, 0.68),
+        ("icon-192.png", 192, 0.78),
+        ("icon-512.png", 512, 0.78),
+        ("apple-touch-icon.png", 180, 0.80),
+        ("icon-maskable-192.png", 192, 0.68),
+        ("icon-maskable-512.png", 512, 0.68),
+    ]
+    for name, size, scale in specs:
+        im = draw_icon(size, scale)
+        # Force opaque RGB PNG (no alpha channel = no white corner bleed)
+        path = OUT / name
+        im.save(path, format="PNG", optimize=True)
+        print("wrote", name, im.mode, im.size)
 
-# Keep legacy filenames pointing to new art too (in case old manifest cached)
-for legacy, neu in [
-    ("icon-192.png", "casa-192.png"),
-    ("icon-512.png", "casa-512.png"),
-    ("apple-touch-icon.png", "casa-apple-180.png"),
-    ("icon-maskable-192.png", "casa-maskable-192.png"),
-    ("icon-maskable-512.png", "casa-maskable-512.png"),
-]:
-    Image.open(OUT / neu).save(OUT / legacy, optimize=True)
+    # Also update public/icon.png and SVG-less fallback
+    draw_icon(512, 0.78).save(Path(r"C:\Users\tiago\Downloads\gf\public\icon.png"), format="PNG", optimize=True)
+    print("done")
 
-print("done")
+
+if __name__ == "__main__":
+    save_all()

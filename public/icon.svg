@@ -1,9 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Casa Share">
-  <rect width="512" height="512" rx="112" fill="#0b0f14"/>
-  <path fill="#3d9a8b" d="M256 88L96 220v204c0 14 11 24 24 24h100V332h72v116h100c13 0 24-10 24-24V220L256 88z"/>
-  <path fill="#2f7f73" d="M360 120h36v52l-36 30z"/>
-  <rect x="168" y="248" width="52" height="52" rx="6" fill="#0b0f14" opacity=".35"/>
+  <rect width="512" height="512" fill="#0b0f14"/>
+  <path fill="#3d9a8b" d="M256 90L110 220v220h110V320h72v120h110V220L256 90z"/>
+  <rect x="318" y="120" width="48" height="70" fill="#2a6f65"/>
+  <rect x="168" y="260" width="28" height="28" fill="#0b0f14"/>
+  <rect x="202" y="260" width="28" height="28" fill="#0b0f14"/>
+  <rect x="168" y="294" width="28" height="28" fill="#0b0f14"/>
+  <rect x="202" y="294" width="28" height="28" fill="#0b0f14"/>
   <circle cx="360" cy="360" r="78" fill="#e8c07d"/>
-  <circle cx="360" cy="360" r="62" fill="#f0d399"/>
-  <text x="360" y="382" text-anchor="middle" font-size="72" font-family="Arial,sans-serif" font-weight="700" fill="#8a6a2e">$</text>
+  <circle cx="360" cy="360" r="64" fill="#f0d399"/>
+  <text x="360" y="385" text-anchor="middle" font-size="78" font-family="Arial,sans-serif" font-weight="700" fill="#8a6a2e">$</text>
 </svg>

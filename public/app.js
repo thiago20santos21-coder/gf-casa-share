@@ -1745,7 +1745,7 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-        .register('/sw.js?v=11', { updateViaCache: 'none' })
+        .register('/sw.js?v=13', { updateViaCache: 'none' })
         .then((reg) => {
           reg.update().catch(() => {});
           if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -1758,7 +1758,7 @@
           updateInstallUI();
         })
         .catch(() => {
-          navigator.serviceWorker.register('./sw.js?v=11', { updateViaCache: 'none' }).catch(() => {});
+          navigator.serviceWorker.register('./sw.js?v=13', { updateViaCache: 'none' }).catch(() => {});
         });
     }
 
