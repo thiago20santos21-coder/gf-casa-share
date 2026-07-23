@@ -322,9 +322,9 @@
 
   function notifIconUrl() {
     try {
-      return new URL('/icons/icon-192.png', self.location.origin).href;
+      return new URL('/icons/casa-192.png', self.location.origin).href;
     } catch (_) {
-      return '/icons/icon-192.png';
+      return '/icons/casa-192.png';
     }
   }
 

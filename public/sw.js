@@ -1,18 +1,17 @@
-﻿/* Casa Share â€” Service Worker v8 (hard cache bust) */
-const CACHE_NAME = 'casa-share-v8';
+﻿/* Casa Share — Service Worker v9 (app icon bust) */
+const CACHE_NAME = 'casa-share-v9';
 const PRECACHE = [
   './',
   './index.html',
   './app.js',
-  './app.js?v=20260723h',
+  './app.js?v=20260723i',
   './manifest.json',
-  './manifest.json?v=20260723h',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/icon-maskable-192.png',
-  './icons/icon-maskable-512.png',
-  './icons/apple-touch-icon.png',
-  './icon.svg'
+  './manifest.json?v=20260723i',
+  './icons/casa-192.png',
+  './icons/casa-512.png',
+  './icons/casa-maskable-192.png',
+  './icons/casa-maskable-512.png',
+  './icons/casa-apple-180.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -93,7 +92,7 @@ self.addEventListener('message', (event) => {
   const data = event.data || {};
   if (data.type === 'SKIP_WAITING') self.skipWaiting();
   if (data.type === 'NOTIFY') {
-    const icon = self.location.origin + '/icons/icon-192.png';
+    const icon = self.location.origin + '/icons/casa-192.png';
     event.waitUntil(
       self.registration.showNotification(data.title || 'Casa Share', {
         body: data.body || '',
