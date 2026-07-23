@@ -14,6 +14,12 @@
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
+  db.settings({ merge: true, cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
+  db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+    // Ignora se outra aba já ativou ou o navegador não permite
+    console.warn('Firestore offline persistence:', err && err.code);
+  });
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
 
   let currentUser = null;
   let userProfile = null;
@@ -182,21 +188,66 @@
     });
   }
 
-  async function queueCount() {
-    const all = await queueAll();
-    return all.length;
+  function cacheKey(kind) {
+    return 'casa_share_cache_' + (groupId || 'none') + '_' + kind;
+  }
+
+  function saveLocalCache(kind, data) {
+    try {
+      localStorage.setItem(cacheKey(kind), JSON.stringify({ at: Date.now(), data }));
+    } catch (_) {}
+  }
+
+  function loadLocalCache(kind) {
+    try {
+      const raw = localStorage.getItem(cacheKey(kind));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && parsed.data != null ? parsed.data : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function hydrateFromCache() {
+    if (!groupId) return;
+    const g = loadLocalCache('group');
+    const e = loadLocalCache('expenses');
+    const s = loadLocalCache('shopping');
+    const m = loadLocalCache('messages');
+    if (g) {
+      currentGroup = g;
+      try {
+        renderGroupMeta();
+      } catch (_) {}
+    }
+    if (Array.isArray(e)) {
+      expenses = e;
+      renderExpenses();
+    }
+    if (Array.isArray(s)) {
+      shopping = s;
+      renderShopping();
+    }
+    if (Array.isArray(m)) {
+      messages = m;
+      renderChat();
+    }
   }
 
   async function updateOfflineUI() {
     const online = navigator.onLine;
     const pending = await queueCount();
-    $('pill-live').classList.toggle('hidden', !online);
-    $('pill-offline').classList.toggle('hidden', online && pending === 0);
+    const live = $('pill-live');
+    const off = $('pill-offline');
+    if (live) live.classList.toggle('hidden', !online);
+    if (!off) return;
+    off.classList.toggle('hidden', online && pending === 0);
     if (!online) {
-      $('pill-offline').textContent = pending ? `Offline — ${pending} na fila` : 'Offline';
+      off.textContent = pending ? `Offline — ${pending} na fila` : 'Offline — dados locais';
     } else if (pending) {
-      $('pill-offline').classList.remove('hidden');
-      $('pill-offline').textContent = `Sincronizando ${pending}…`;
+      off.classList.remove('hidden');
+      off.textContent = `Sincronizando ${pending}…`;
     }
   }
 
@@ -263,19 +314,19 @@
 
   async function runWrite(op) {
     op.groupId = op.groupId || groupId;
-    if (!navigator.onLine) {
-      await queueAdd(op);
-      await updateOfflineUI();
-      toast('Salvo offline — será sincronizado ao reconectar');
-      return { offline: true };
-    }
+    // Com persistence do Firestore, tenta gravar sempre; se falhar, fila local
     try {
       await executeQueuedOp(op);
+      if (!navigator.onLine) {
+        await updateOfflineUI();
+        toast('Salvo offline — será sincronizado ao reconectar');
+        return { offline: true };
+      }
       return { offline: false };
     } catch (err) {
       await queueAdd(op);
       await updateOfflineUI();
-      toast('Sem conexão estável — salvo na fila');
+      toast(navigator.onLine ? 'Sem conexão estável — salvo na fila' : 'Salvo offline — será sincronizado ao reconectar');
       return { offline: true, error: err };
     }
   }
@@ -679,6 +730,7 @@
     groupId = gid;
     showScreen('app-shell');
     showPage('expenses');
+    hydrateFromCache();
     updateOfflineUI();
     flushQueue();
     ensureNotifPermission(false).then((ok) => {
@@ -686,6 +738,9 @@
         toast('Ative as notificações em Grupo para receber chat e despesas');
       }
     });
+    if (!navigator.onLine) {
+      toast('Modo offline — mostrando dados salvos neste aparelho');
+    }
 
     unsubGroup = db
       .collection('groups')
@@ -724,10 +779,14 @@
             } catch (_) {}
           }
           currentGroup = data;
+          saveLocalCache('group', currentGroup);
           renderGroupMeta();
           updateInstallUI();
         },
-        (err) => console.error('group listen', err)
+        (err) => {
+          console.error('group listen', err);
+          if (!navigator.onLine) hydrateFromCache();
+        }
       );
 
     unsubExpenses = db
@@ -739,6 +798,7 @@
         (snap) => {
           const prevReady = listenersReady;
           expenses = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          saveLocalCache('expenses', expenses);
           if (prevReady) {
             snap.docChanges().forEach((ch) => {
               if (ch.type === 'added' && !seenExpense.has(ch.doc.id)) {
@@ -772,6 +832,7 @@
         (snap) => {
           const prevReady = listenersReady;
           shopping = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          saveLocalCache('shopping', shopping);
           if (prevReady) {
             snap.docChanges().forEach((ch) => {
               if (ch.type === 'added' && !seenShop.has(ch.doc.id)) {
@@ -817,6 +878,7 @@
         (snap) => {
           const prevReady = listenersReady;
           messages = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          saveLocalCache('messages', messages);
           if (prevReady) {
             snap.docChanges().forEach((ch) => {
               if (ch.type === 'added' && !seenMsg.has(ch.doc.id)) {
@@ -1129,22 +1191,19 @@
       valor: v,
       createdBy: currentUser.uid,
       createdByName: userProfile.name || currentUser.displayName || 'Alguém',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    // offline: serverTimestamp can't be queued as FieldValue — use Date
-    const offlinePayload = {
-      ...payload,
       createdAt: new Date()
     };
+    await runWrite({ action: 'addExpense', payload });
+    // UI otimista offline
     if (!navigator.onLine) {
-      await runWrite({ action: 'addExpense', payload: offlinePayload });
-    } else {
-      await runWrite({ action: 'addExpense', payload });
+      expenses = [{ id: 'local-' + Date.now(), ...payload }, ...expenses];
+      saveLocalCache('expenses', expenses);
+      renderExpenses();
     }
     iD.value = '';
     iV.value = '';
     iD.focus();
-    if (navigator.onLine) toast('Despesa adicionada');
+    toast(navigator.onLine ? 'Despesa adicionada' : 'Despesa salva offline');
   }
 
   async function removerGasto(id) {
@@ -1190,7 +1249,7 @@
       const el = document.createElement('div');
       el.className = 'shop-item' + (item.done ? ' done' : '');
       el.innerHTML = `
-        <button class="shop-check" type="button" aria-label="Marcar">${item.done ? 'âœ“' : ''}</button>
+        <button class="shop-check" type="button" aria-label="Marcar">${item.done ? '✓' : ''}</button>
         <div class="shop-body">
           <div class="shop-text">${escapeHTML(item.text)}</div>
           <div class="shop-by">${
@@ -1219,14 +1278,20 @@
       done: false,
       createdBy: currentUser.uid,
       createdByName: userProfile.name || currentUser.displayName || 'Alguém',
-      createdAt: navigator.onLine ? firebase.firestore.FieldValue.serverTimestamp() : new Date(),
+      createdAt: new Date(),
       doneBy: null,
       doneByName: null
     };
     await runWrite({ action: 'addShop', payload });
+    if (!navigator.onLine) {
+      shopping = [{ id: 'local-' + Date.now(), ...payload }, ...shopping];
+      saveLocalCache('shopping', shopping);
+      renderShopping();
+    }
     input.value = '';
     input.focus();
     if (shopFilter === 'done') setShopFilter('pending');
+    toast(navigator.onLine ? 'Item adicionado' : 'Item salvo offline');
   }
 
   async function toggleCompra(item) {
@@ -1359,9 +1424,15 @@
       text,
       uid: currentUser.uid,
       name: userProfile.name || currentUser.displayName || 'Alguém',
-      createdAt: navigator.onLine ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+      createdAt: new Date()
     };
     await runWrite({ action: 'addMessage', payload });
+    if (!navigator.onLine) {
+      messages = [...messages, { id: 'local-' + Date.now(), ...payload }];
+      saveLocalCache('messages', messages);
+      renderChat();
+    }
+    toast(navigator.onLine ? 'Mensagem enviada' : 'Mensagem salva offline');
   }
 
   async function salvarConfigGrupo() {

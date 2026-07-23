@@ -1,34 +1,60 @@
-/* Casa Share — Service Worker v11 (app icon bust) */
-const CACHE_NAME = 'casa-share-v11';
+/* Casa Share — Service Worker v12 (offline-first) */
+const CACHE_NAME = 'casa-share-v12';
 const PRECACHE = [
   './',
   './index.html',
   './app.js',
-  './app.js?v=20260723k',
+  './app.js?v=20260723m',
   './manifest.json',
-  './manifest.json?v=20260723k',
+  './manifest.json?v=20260723m',
   './icons/casa-192.png',
   './icons/casa-512.png',
   './icons/casa-maskable-192.png',
   './icons/casa-maskable-512.png',
-  './icons/casa-apple-180.png'
+  './icons/casa-apple-180.png',
+  'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE.map((u) => u)).catch(() => cache.addAll(['./', './index.html', './app.js'])))
+    caches
+      .open(CACHE_NAME)
+      .then(async (cache) => {
+        for (const url of PRECACHE) {
+          try {
+            await cache.add(url);
+          } catch (_) {
+            /* CDN pode falhar; app ainda abre */
+          }
+        }
+      })
       .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
+
+function isAppShell(request, url) {
+  return (
+    request.mode === 'navigate' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('index.html') ||
+    url.pathname.endsWith('app.js') ||
+    url.pathname.endsWith('sw.js') ||
+    url.pathname.endsWith('manifest.json')
+  );
+}
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -36,14 +62,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (!url.protocol.startsWith('http')) return;
 
-  // Always network-first for app shell
-  if (
-    request.mode === 'navigate' ||
-    url.pathname.endsWith('/') ||
-    url.pathname.endsWith('index.html') ||
-    url.pathname.endsWith('app.js') ||
-    url.pathname.endsWith('sw.js')
-  ) {
+  // App shell: network first, cache fallback (abre offline)
+  if (isAppShell(request, url)) {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -51,39 +71,26 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           return response;
         })
-        .catch(() => caches.match(request).then((r) => r || caches.match('./index.html')))
+        .catch(() =>
+          caches.match(request).then((r) => r || caches.match('./index.html') || caches.match('/index.html'))
+        )
     );
     return;
   }
 
-  if (url.origin === self.location.origin) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        const fetched = fetch(request)
-          .then((response) => {
-            if (response && response.ok) {
-              const copy = response.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-            }
-            return response;
-          })
-          .catch(() => cached);
-        return cached || fetched;
-      })
-    );
-    return;
-  }
-
+  // Mesmo origin + CDNs: cache first, atualiza em background
   event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      const cached = await cache.match(request);
-      try {
-        const response = await fetch(request);
-        if (response && response.ok) cache.put(request, response.clone());
-        return response;
-      } catch (_) {
-        return cached;
-      }
+    caches.match(request).then((cached) => {
+      const fetched = fetch(request)
+        .then((response) => {
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => cached);
+      return cached || fetched;
     })
   );
 });
@@ -96,7 +103,7 @@ self.addEventListener('message', (event) => {
     event.waitUntil(
       self.registration.showNotification(data.title || 'Casa Share', {
         body: data.body || '',
-        tag: data.tag || 'gf-update',
+        tag: data.tag || 'casa-update',
         icon,
         badge: icon,
         data: { url: data.url || '/' },
@@ -134,4 +141,3 @@ self.addEventListener('push', (event) => {
     })
   );
 });
-
