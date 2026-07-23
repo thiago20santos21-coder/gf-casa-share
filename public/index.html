@@ -244,11 +244,22 @@
     }
     .invite-code{font-family:var(--display);font-size:1.7rem;font-weight:700;letter-spacing:.18em;color:var(--teal);margin:.35rem 0}
     .members{display:flex;flex-direction:column;gap:.45rem;margin-top:.65rem}
-    .member{display:flex;align-items:center;gap:.65rem;padding:.65rem .75rem;background:var(--bg-soft);border:1px solid var(--border);border-radius:12px}
+    .member{display:flex;align-items:center;gap:.65rem;padding:.65rem .75rem;background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;flex-wrap:wrap}
     .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--teal),#2a6f65);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0}
     .member-name{font-weight:600;font-size:.88rem}
     .member-email{font-size:.7rem;color:var(--text-3)}
-    .member-tag{margin-left:auto;font-size:.65rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.04em}
+    .member-tag{font-size:.65rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.04em}
+    .member-tag.muted{color:var(--text-3)}
+    .member-tag.admin{color:var(--teal)}
+    .member-actions{display:flex;flex-wrap:wrap;gap:.3rem;width:100%;margin-top:.35rem;padding-left:42px}
+    .member-actions .btn{width:auto;margin:0}
+    .roles-box{background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:.85rem;margin-bottom:.85rem;font-size:.8rem;color:var(--text-2);line-height:1.45}
+    .roles-box strong{color:var(--text)}
+    .install-card-actions{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.75rem}
+    .install-card-actions .btn{width:auto;margin:0}
+    .install-steps{margin-top:.65rem;padding-left:1.1rem;color:var(--text-2);font-size:.82rem;line-height:1.5}
+    .pix-readonly input{opacity:.75;pointer-events:none}
+    .topbar-actions .btn-install-top{border-color:rgba(61,154,139,.4);color:var(--teal)}
 
     .install-banner{
       display:none;position:fixed;left:12px;right:12px;bottom:calc(var(--nav-h) + var(--safe-b) + 10px);
@@ -364,6 +375,7 @@
         </div>
       </div>
       <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm btn-install-top hidden" type="button" id="btn-install-header" title="Instalar app">Instalar</button>
         <button class="btn btn-ghost btn-sm" type="button" id="btn-settings" title="Grupo">Grupo</button>
         <button class="btn btn-ghost btn-sm" type="button" id="btn-logout">Sair</button>
       </div>
@@ -450,39 +462,67 @@
       </section>
 
       <section class="page hidden" id="page-settings">
+        <div class="card" id="install-card">
+          <h3>Instalar no celular</h3>
+          <p class="hint" id="install-hint" style="margin-top:0">Adicione à tela inicial para abrir como aplicativo.</p>
+          <div class="install-card-actions">
+            <button class="btn btn-primary btn-sm" type="button" id="btn-install-settings">Instalar app</button>
+            <button class="btn btn-ghost btn-sm" type="button" id="btn-install-howto">Como instalar</button>
+          </div>
+          <ol class="install-steps hidden" id="install-howto">
+            <li id="install-step-1">No Chrome/Android: toque em Instalar app (ou menu ⋮ → Instalar app).</li>
+            <li id="install-step-2">No iPhone/iPad (Safari): Compartilhar → Adicionar à Tela de Início.</li>
+            <li>Depois abra pelo ícone Casa Share na tela inicial.</li>
+          </ol>
+        </div>
+
         <div class="card">
           <h3>Convide o grupo</h3>
-          <p class="hint" style="margin-top:0">Quem entrar com o código paga o rateio. Você (criador) recebe.</p>
+          <p class="hint" style="margin-top:0">Quem entra com o código paga o rateio. O criador recebe o PIX.</p>
           <div class="invite-box">
             <div style="font-size:.72rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em">Código</div>
             <div class="invite-code" id="invite-code-display">------</div>
             <button class="btn btn-primary btn-sm" style="width:auto;margin:0" type="button" id="btn-copy-invite">Copiar código</button>
           </div>
+
+          <div class="roles-box" id="roles-help">
+            <strong>Papéis:</strong>
+            Criador — PIX, admins, remover membros, apagar grupo.
+            Admin — remover membros e moderar (apagar despesas/compras/msgs de outros).
+            Membro — usar o app; não edita PIX.
+          </div>
+
           <h3 style="margin-top:.4rem">Membros</h3>
           <div class="members" id="members-list"></div>
         </div>
-        <div class="card">
+
+        <div class="card" id="pix-card">
           <h3>PIX do recebedor</h3>
-          <p class="hint" style="margin-top:0">Configure a chave de quem criou o grupo (recebe os pagamentos).</p>
-          <label class="field" for="cfg-pix-key">Chave PIX</label>
-          <input id="cfg-pix-key" type="text" placeholder="Telefone, e-mail ou chave">
-          <label class="field" for="cfg-pix-name">Nome do recebedor</label>
-          <input id="cfg-pix-name" type="text" placeholder="Nome no PIX" maxlength="25">
-          <label class="field" for="cfg-pix-city">Cidade</label>
-          <input id="cfg-pix-city" type="text" placeholder="Cidade" maxlength="15">
-          <button class="btn btn-primary" type="button" id="btn-save-cfg">Salvar</button>
+          <p class="hint" id="pix-hint" style="margin-top:0">Somente o criador do grupo pode alterar a chave PIX.</p>
+          <div id="pix-fields">
+            <label class="field" for="cfg-pix-key">Chave PIX</label>
+            <input id="cfg-pix-key" type="text" placeholder="Telefone, e-mail ou chave">
+            <label class="field" for="cfg-pix-name">Nome do recebedor</label>
+            <input id="cfg-pix-name" type="text" placeholder="Nome no PIX" maxlength="25">
+            <label class="field" for="cfg-pix-city">Cidade</label>
+            <input id="cfg-pix-city" type="text" placeholder="Cidade" maxlength="15">
+            <button class="btn btn-primary" type="button" id="btn-save-cfg">Salvar PIX</button>
+          </div>
           <div class="form-error" id="cfg-error"></div>
         </div>
+
         <div class="card">
           <h3>Notificações</h3>
           <p class="hint" style="margin-top:0">Receba alertas de chat, despesas e compras neste aparelho.</p>
           <button class="btn btn-ghost" style="width:100%;margin-top:.6rem" type="button" id="btn-enable-notifs">Ativar notificações</button>
           <div class="hint" id="notif-status"></div>
         </div>
+
         <div class="card">
           <h3>Conta</h3>
           <p class="hint" id="account-info" style="margin-top:0"></p>
-          <button class="btn btn-danger" style="width:100%;margin-top:.7rem" type="button" id="btn-leave-group">Sair deste grupo</button>
+          <button class="btn btn-ghost" style="width:100%;margin-top:.7rem" type="button" id="btn-leave-group">Sair deste grupo</button>
+          <button class="btn btn-danger hidden" style="width:100%;margin-top:.55rem" type="button" id="btn-delete-group">Apagar grupo permanentemente</button>
         </div>
       </section>
     </main>
@@ -526,6 +566,17 @@
       <div class="modal-btns">
         <button class="btn-copy" id="btn-copy-text" type="button">Copiar texto WhatsApp</button>
         <button class="btn-copy outline" id="btn-copy-pix" type="button">Copiar Pix Copia e Cola</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" style="text-align:left;max-width:420px">
+      <h2 id="confirm-title" style="color:var(--text);margin-bottom:.55rem">Confirmar</h2>
+      <p class="hint" id="confirm-message" style="margin:0 0 1.15rem;color:var(--text-2);font-size:.92rem;line-height:1.45"></p>
+      <div style="display:flex;gap:.55rem;justify-content:flex-end;flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost btn-sm" id="confirm-cancel" style="width:auto;margin:0">Cancelar</button>
+        <button type="button" class="btn btn-danger btn-sm" id="confirm-ok" style="width:auto;margin:0">Confirmar</button>
       </div>
     </div>
   </div>

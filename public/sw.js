@@ -1,5 +1,5 @@
-/* GF Casa Share — Service Worker v3 */
-const CACHE_NAME = 'gf-casa-share-v3';
+/* GF Casa Share — Service Worker v4 */
+const CACHE_NAME = 'gf-casa-share-v4';
 const PRECACHE = [
   './',
   './index.html',
@@ -34,11 +34,8 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-
-  // Bypass non-http(s) and chrome extensions
   if (!url.protocol.startsWith('http')) return;
 
-  // Network-first for navigations / app shell
   if (request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname.endsWith('app.js')) {
     event.respondWith(
       fetch(request)
@@ -54,7 +51,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for same-origin static assets
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -73,7 +69,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-while-revalidate for CDNs (fonts, firebase, qrcode)
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
       const cached = await cache.match(request);
@@ -90,18 +85,17 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('message', (event) => {
   const data = event.data || {};
-  if (data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  if (data.type === 'SKIP_WAITING') self.skipWaiting();
   if (data.type === 'NOTIFY') {
     const { title, body, tag, url } = data;
+    const icon = self.location.origin + '/icons/icon-192.png';
     event.waitUntil(
       self.registration.showNotification(title || 'GF Casa Share', {
         body: body || '',
         tag: tag || 'gf-update',
-        icon: './icons/icon-192.png',
-        badge: './icons/icon-192.png',
-        data: { url: url || './' },
+        icon,
+        badge: icon,
+        data: { url: url || '/' },
         renotify: true
       })
     );
@@ -110,7 +104,7 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || './';
+  const target = (event.notification.data && event.notification.data.url) || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const client of list) {
@@ -131,14 +125,15 @@ self.addEventListener('push', (event) => {
   } catch (_) {
     try {
       payload.body = event.data.text();
-    } catch (_) {}
+    } catch (__) {}
   }
+  const icon = self.location.origin + '/icons/icon-192.png';
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
-      icon: './icons/icon-192.png',
-      badge: './icons/icon-192.png',
-      data: { url: payload.url || './' }
+      icon,
+      badge: icon,
+      data: { url: payload.url || '/' }
     })
   );
 });

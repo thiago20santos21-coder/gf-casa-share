@@ -63,6 +63,36 @@
     clearTimeout(toast._t);
     toast._t = setTimeout(() => t.classList.remove('show'), 2400);
   }
+
+  let confirmResolver = null;
+  function appConfirm(message, opts) {
+    const options = opts || {};
+    return new Promise((resolve) => {
+      if (confirmResolver) {
+        confirmResolver(false);
+        confirmResolver = null;
+      }
+      confirmResolver = resolve;
+      $('confirm-title').textContent = options.title || 'Confirmar';
+      $('confirm-message').textContent = message || '';
+      const ok = $('confirm-ok');
+      ok.textContent = options.okText || 'Confirmar';
+      ok.className = 'btn btn-sm ' + (options.danger === false ? 'btn-primary' : 'btn-danger');
+      ok.style.width = 'auto';
+      ok.style.margin = '0';
+      $('confirm-cancel').textContent = options.cancelText || 'Cancelar';
+      $('confirm-modal').classList.add('active');
+      ok.focus();
+    });
+  }
+  function closeConfirm(result) {
+    $('confirm-modal').classList.remove('active');
+    if (confirmResolver) {
+      const r = confirmResolver;
+      confirmResolver = null;
+      r(!!result);
+    }
+  }
   function showScreen(name) {
     ['boot-screen', 'auth-screen', 'group-screen', 'app-shell'].forEach((id) => {
       $(id).classList.toggle('hidden', id !== name);
@@ -258,49 +288,82 @@
   }
 
   async function ensureNotifPermission(interactive) {
+    const statusEl = $('notif-status');
     if (typeof Notification === 'undefined') {
-      $('notif-status').textContent = 'Este navegador não suporta notificações.';
+      if (statusEl) statusEl.textContent = 'Este navegador não suporta notificações.';
       return false;
     }
     if (Notification.permission === 'granted') {
       notifPermission = 'granted';
-      $('notif-status').textContent = 'Notificações ativadas neste aparelho.';
+      if (statusEl) statusEl.textContent = 'Notificações ativas neste aparelho.';
       return true;
     }
     if (Notification.permission === 'denied') {
-      $('notif-status').textContent = 'Bloqueadas nas configurações do navegador/sistema.';
+      if (statusEl) statusEl.textContent = 'Bloqueadas nas configurações do navegador/sistema. Ative manualmente.';
       return false;
     }
-    if (!interactive) return false;
+    if (!interactive) {
+      if (statusEl) statusEl.textContent = 'Toque em “Ativar notificações” para receber alertas.';
+      return false;
+    }
     const res = await Notification.requestPermission();
     notifPermission = res;
     if (res === 'granted') {
-      $('notif-status').textContent = 'Notificações ativadas neste aparelho.';
+      if (statusEl) statusEl.textContent = 'Notificações ativas neste aparelho.';
+      await notifyUser('GF Casa Share', 'Notificações ligadas. Você será avisado de novidades no grupo.', 'notif-on', true);
       return true;
     }
-    $('notif-status').textContent = 'Permissão negada.';
+    if (statusEl) statusEl.textContent = 'Permissão negada.';
     return false;
   }
 
-  async function notifyUser(title, body, tag) {
-    if (!canNotify()) return;
-    // Avoid notifying when user is focused on the relevant screen
-    if (!document.hidden && document.hasFocus()) return;
-    const reg = await navigator.serviceWorker.getRegistration();
-    if (reg && reg.active) {
-      reg.active.postMessage({ type: 'NOTIFY', title, body, tag, url: './' });
-    } else {
-      new Notification(title, {
-        body,
-        tag,
-        icon: './icons/icon-192.png'
-      });
+  function notifIconUrl() {
+    try {
+      return new URL('/icons/icon-192.png', self.location.origin).href;
+    } catch (_) {
+      return '/icons/icon-192.png';
     }
   }
 
-  /* ========== PIX helpers ========== */
+  /** @param {boolean} [force] ignore focus check (permission test / PIX) */
+  async function notifyUser(title, body, tag, force) {
+    if (!canNotify()) return;
+    if (!force && !document.hidden && document.hasFocus()) return;
+    const icon = notifIconUrl();
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title || 'GF Casa Share', {
+        body: body || '',
+        tag: tag || 'gf-update',
+        icon,
+        badge: icon,
+        renotify: true,
+        data: { url: '/' }
+      });
+    } catch (_) {
+      try {
+        new Notification(title || 'GF Casa Share', { body: body || '', tag, icon });
+      } catch (__) {}
+    }
+  }
+
+  /* ========== PIX / roles helpers ========== */
   function isCreator() {
     return !!(currentGroup && currentUser && currentGroup.createdBy === currentUser.uid);
+  }
+
+  function adminIds() {
+    return (currentGroup && Array.isArray(currentGroup.adminIds) ? currentGroup.adminIds : []) || [];
+  }
+
+  function isAdmin() {
+    if (!currentUser || !currentGroup) return false;
+    if (isCreator()) return true;
+    return adminIds().includes(currentUser.uid);
+  }
+
+  function isUserAdmin(uid) {
+    return adminIds().includes(uid);
   }
 
   function payingMembers() {
@@ -311,6 +374,19 @@
 
   function payingCount() {
     return Math.max(0, payingMembers().length);
+  }
+
+  function isStandaloneDisplay() {
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: minimal-ui)').matches ||
+      window.navigator.standalone === true
+    );
+  }
+
+  function isIos() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
 
   function gerarPixPayload(chave, nome, cidade, valor) {
@@ -473,6 +549,7 @@
         inviteCode,
         memberIds: [currentUser.uid],
         members: [member],
+        adminIds: [],
         personCount: people,
         pix: { chave: '', nome: '', cidade: '' },
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -561,14 +638,41 @@
       .collection('groups')
       .doc(gid)
       .onSnapshot(
-        (snap) => {
+        async (snap) => {
           if (!snap.exists) {
+            clearListeners();
+            try {
+              await db.collection('users').doc(currentUser.uid).set({ groupId: null }, { merge: true });
+            } catch (_) {}
+            userProfile.groupId = null;
+            groupId = null;
             currentGroup = null;
             showScreen('group-screen');
+            toast('Grupo removido');
             return;
           }
-          currentGroup = { id: snap.id, ...snap.data() };
+          const data = { id: snap.id, ...snap.data() };
+          if (!(data.memberIds || []).includes(currentUser.uid)) {
+            clearListeners();
+            try {
+              await db.collection('users').doc(currentUser.uid).set({ groupId: null }, { merge: true });
+            } catch (_) {}
+            userProfile.groupId = null;
+            groupId = null;
+            currentGroup = null;
+            showScreen('group-screen');
+            toast('Você foi removido do grupo');
+            return;
+          }
+          // Backfill adminIds for older groups (creator only)
+          if (!Array.isArray(data.adminIds) && data.createdBy === currentUser.uid) {
+            try {
+              await db.collection('groups').doc(gid).update({ adminIds: [] });
+            } catch (_) {}
+          }
+          currentGroup = data;
           renderGroupMeta();
+          updateInstallUI();
         },
         (err) => console.error('group listen', err)
       );
@@ -673,25 +777,157 @@
     $('cfg-pix-name').value = (currentGroup.pix && currentGroup.pix.nome) || '';
     $('cfg-pix-city').value = (currentGroup.pix && currentGroup.pix.cidade) || '';
     $('account-info').textContent =
-      (userProfile && userProfile.name ? userProfile.name + ' · ' : '') + (currentUser.email || '');
+      (userProfile && userProfile.name ? userProfile.name + ' · ' : '') +
+      (currentUser.email || '') +
+      (isCreator() ? ' · Criador' : isAdmin() ? ' · Admin' : ' · Membro');
 
     const creator = isCreator();
+    const admin = isAdmin();
     $('pill-receiver').classList.toggle('hidden', !creator);
     $('receiver-banner').classList.toggle('show', creator);
+
+    const pixFields = $('pix-fields');
+    const pixHint = $('pix-hint');
+    const saveBtn = $('btn-save-cfg');
+    if (pixFields) pixFields.classList.toggle('pix-readonly', !creator);
+    ['cfg-pix-key', 'cfg-pix-name', 'cfg-pix-city'].forEach((id) => {
+      const el = $(id);
+      if (el) el.readOnly = !creator;
+    });
+    if (saveBtn) saveBtn.classList.toggle('hidden', !creator);
+    if (pixHint) {
+      pixHint.textContent = creator
+        ? 'Somente você (criador) pode alterar a chave PIX.'
+        : 'Somente o criador pode editar o PIX. Você pode ver e usar ao gerar o pagamento.';
+    }
+
+    const delBtn = $('btn-delete-group');
+    if (delBtn) delBtn.classList.toggle('hidden', !creator);
+    const leaveBtn = $('btn-leave-group');
+    if (leaveBtn) leaveBtn.classList.toggle('hidden', creator);
 
     const list = $('members-list');
     list.innerHTML = '';
     (currentGroup.members || []).forEach((m) => {
       const isRecv = m.uid === currentGroup.createdBy;
+      const userIsAdmin = isUserAdmin(m.uid);
       const el = document.createElement('div');
       el.className = 'member';
+      let tags = '';
+      if (isRecv) tags += '<span class="member-tag">Criador · Recebe</span>';
+      else if (userIsAdmin) tags += '<span class="member-tag admin">Admin · Paga</span>';
+      else tags += '<span class="member-tag muted">Membro · Paga</span>';
+
+      let actions = '';
+      if (!isRecv && creator) {
+        actions += userIsAdmin
+          ? `<button type="button" class="btn btn-ghost btn-sm act-demote">Remover admin</button>`
+          : `<button type="button" class="btn btn-ghost btn-sm act-promote">Tornar admin</button>`;
+      }
+      if (!isRecv && admin && m.uid !== currentUser.uid) {
+        actions += `<button type="button" class="btn btn-danger btn-sm act-remove">Remover</button>`;
+      }
+
       el.innerHTML = `<div class="avatar">${escapeHTML(initials(m.name))}</div>
-        <div><div class="member-name">${escapeHTML(m.name || 'Membro')}</div>
-        <div class="member-email">${escapeHTML(m.email || '')}</div></div>
-        ${isRecv ? '<span class="member-tag">Recebe</span>' : '<span class="member-tag" style="color:var(--text-3)">Paga</span>'}`;
+        <div style="flex:1;min-width:0">
+          <div class="member-name">${escapeHTML(m.name || 'Membro')}</div>
+          <div class="member-email">${escapeHTML(m.email || '')}</div>
+          <div style="margin-top:.25rem;display:flex;gap:.35rem;flex-wrap:wrap">${tags}</div>
+        </div>
+        ${actions ? `<div class="member-actions">${actions}</div>` : ''}`;
+
+      const promote = el.querySelector('.act-promote');
+      const demote = el.querySelector('.act-demote');
+      const remove = el.querySelector('.act-remove');
+      if (promote) promote.onclick = () => setMemberAdmin(m.uid, true);
+      if (demote) demote.onclick = () => setMemberAdmin(m.uid, false);
+      if (remove) remove.onclick = () => removerMembro(m);
       list.appendChild(el);
     });
     renderExpenses();
+    updateInstallUI();
+  }
+
+  async function setMemberAdmin(uid, makeAdmin) {
+    if (!isCreator() || !groupId) return;
+    const next = new Set(adminIds());
+    if (makeAdmin) next.add(uid);
+    else next.delete(uid);
+    await db.collection('groups').doc(groupId).update({ adminIds: Array.from(next) });
+    toast(makeAdmin ? 'Admin promovido' : 'Admin removido');
+  }
+
+  async function removerMembro(m) {
+    if (!isAdmin() || !groupId) return;
+    if (m.uid === currentGroup.createdBy) {
+      toast('Não é possível remover o criador');
+      return;
+    }
+    const ok = await appConfirm('Remover ' + (m.name || 'membro') + ' do grupo?', {
+      title: 'Remover membro',
+      okText: 'Remover'
+    });
+    if (!ok) return;
+    const members = (currentGroup.members || []).filter((x) => x.uid !== m.uid);
+    const memberIds = (currentGroup.memberIds || []).filter((id) => id !== m.uid);
+    const nextAdmins = adminIds().filter((id) => id !== m.uid);
+    await db.collection('groups').doc(groupId).update({ members, memberIds, adminIds: nextAdmins });
+    try {
+      await db.collection('users').doc(m.uid).set({ groupId: null }, { merge: true });
+    } catch (err) {
+      console.warn('clear user groupId', err);
+    }
+    toast('Membro removido');
+  }
+
+  async function deleteCollectionDocs(colRef) {
+    const snap = await colRef.limit(400).get();
+    if (snap.empty) return 0;
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    return snap.size;
+  }
+
+  async function apagarGrupo() {
+    if (!isCreator() || !groupId) return;
+    const name = currentGroup.name || 'grupo';
+    const ok1 = await appConfirm(
+      'Apagar permanentemente “' + name + '”? Despesas, compras, chat e convite serão removidos.',
+      { title: 'Apagar grupo', okText: 'Continuar' }
+    );
+    if (!ok1) return;
+    const ok2 = await appConfirm('Tem certeza? Esta ação não pode ser desfeita.', {
+      title: 'Confirmação final',
+      okText: 'Apagar tudo'
+    });
+    if (!ok2) return;
+    const gid = groupId;
+    const code = currentGroup.inviteCode;
+    const gRef = db.collection('groups').doc(gid);
+    try {
+      clearListeners();
+      for (const sub of ['expenses', 'shopping', 'messages']) {
+        let n = 1;
+        while (n > 0) n = await deleteCollectionDocs(gRef.collection(sub));
+      }
+      if (code) {
+        try {
+          await db.collection('invites').doc(code).delete();
+        } catch (_) {}
+      }
+      await gRef.delete();
+      await db.collection('users').doc(currentUser.uid).set({ groupId: null }, { merge: true });
+      userProfile.groupId = null;
+      groupId = null;
+      currentGroup = null;
+      showScreen('group-screen');
+      toast('Grupo apagado');
+    } catch (err) {
+      console.error(err);
+      toast(err.message || 'Falha ao apagar grupo');
+      if (gid) entrarNoApp(gid);
+    }
   }
 
   function showPage(page) {
@@ -792,7 +1028,11 @@
 
   async function limparTudo() {
     if (!expenses.length) return;
-    if (!confirm('Apagar todas as despesas do grupo?')) return;
+    const ok = await appConfirm('Apagar todas as despesas do grupo?', {
+      title: 'Limpar despesas',
+      okText: 'Apagar todas'
+    });
+    if (!ok) return;
     await runWrite({ action: 'clearExpenses', docIds: expenses.map((g) => g.id) });
     toast('Despesas apagadas');
   }
@@ -890,7 +1130,7 @@
     messages.forEach((m) => {
       const mine = m.uid === currentUser.uid;
       const canEdit = mine;
-      const canDelete = mine || creator;
+      const canDelete = mine || isAdmin();
       const el = document.createElement('div');
       el.className = 'msg ' + (mine ? 'mine' : 'theirs');
       el.dataset.id = m.id;
@@ -972,7 +1212,8 @@
   async function apagarMsg(m) {
     const mine = m.uid === currentUser.uid;
     const label = mine ? 'Apagar sua mensagem?' : 'Apagar mensagem de ' + (m.name || 'membro') + '?';
-    if (!confirm(label)) return;
+    const ok = await appConfirm(label, { title: 'Apagar mensagem', okText: 'Apagar' });
+    if (!ok) return;
     await runWrite({ action: 'deleteMessage', docId: m.id });
     if (editingMsgId === m.id) editingMsgId = null;
     toast('Mensagem apagada');
@@ -995,18 +1236,19 @@
   async function salvarConfigGrupo() {
     $('cfg-error').textContent = '';
     if (!groupId) return;
+    if (!isCreator()) {
+      $('cfg-error').textContent = 'Somente o criador pode alterar o PIX.';
+      return;
+    }
     try {
-      await runWrite({
-        action: 'updateGroup',
-        payload: {
-          pix: {
-            chave: $('cfg-pix-key').value.trim(),
-            nome: $('cfg-pix-name').value.trim(),
-            cidade: $('cfg-pix-city').value.trim()
-          }
+      await db.collection('groups').doc(groupId).update({
+        pix: {
+          chave: $('cfg-pix-key').value.trim(),
+          nome: $('cfg-pix-name').value.trim(),
+          cidade: $('cfg-pix-city').value.trim()
         }
       });
-      toast('Configurações salvas');
+      toast('PIX salvo');
     } catch (err) {
       $('cfg-error').textContent = err.message || 'Erro ao salvar.';
     }
@@ -1020,13 +1262,35 @@
   }
 
   async function sairDoGrupo() {
-    if (!confirm('Sair deste grupo neste aparelho/conta?')) return;
+    if (isCreator()) {
+      toast('Como criador, use “Apagar grupo” (ou promova alguém e peça para recriar).');
+      return;
+    }
+    const ok = await appConfirm('Sair deste grupo? Você deixará de ver despesas, compras e chat.', {
+      title: 'Sair do grupo',
+      okText: 'Sair'
+    });
+    if (!ok) return;
+    const gid = groupId;
+    try {
+      if (gid && currentGroup) {
+        const members = (currentGroup.members || []).filter((x) => x.uid !== currentUser.uid);
+        const memberIds = (currentGroup.memberIds || []).filter((id) => id !== currentUser.uid);
+        const nextAdmins = adminIds().filter((id) => id !== currentUser.uid);
+        await db.collection('groups').doc(gid).update({ members, memberIds, adminIds: nextAdmins });
+      }
+    } catch (err) {
+      console.warn(err);
+      toast(err.message || 'Não foi possível sair');
+      return;
+    }
     clearListeners();
     await db.collection('users').doc(currentUser.uid).set({ groupId: null }, { merge: true });
     userProfile.groupId = null;
     groupId = null;
     currentGroup = null;
     showScreen('group-screen');
+    toast('Você saiu do grupo');
   }
 
   async function fazerLogout() {
@@ -1080,10 +1344,12 @@
     $('btn-copy-pix').textContent = 'Copiar Pix Copia e Cola';
     $('pix-modal').classList.add('active');
 
-    // Notify creator when someone generates payment? notify group when payment ready
-    if (!isCreator()) {
-      notifyUser('PIX pronto', `Valor por pagante: R$ ${fmt(porPagante)}`, 'pix-ready');
-    }
+    notifyUser(
+      'PIX gerado',
+      `Valor por pagante: R$ ${fmt(porPagante)}`,
+      'pix-ready-' + Date.now(),
+      true
+    );
   }
 
   function fecharModal() {
@@ -1111,17 +1377,73 @@
   }
 
   /* ========== Install PWA ========== */
+  function updateInstallUI() {
+    const installed = isStandaloneDisplay();
+    const headerBtn = $('btn-install-header');
+    const card = $('install-card');
+    const hint = $('install-hint');
+    const installBtn = $('btn-install-settings');
+
+    if (headerBtn) headerBtn.classList.toggle('hidden', installed);
+    if (card) card.classList.toggle('hidden', installed);
+
+    if (installed) {
+      $('install-banner').classList.remove('show');
+      return;
+    }
+
+    if (hint) {
+      if (deferredInstallPrompt) {
+        hint.textContent = 'Seu navegador permite instalar com um toque.';
+      } else if (isIos()) {
+        hint.textContent = 'No iPhone/iPad use Safari: Compartilhar → Adicionar à Tela de Início.';
+      } else {
+        hint.textContent = 'Use o botão abaixo ou o menu do navegador (Instalar app / Adicionar à tela inicial).';
+      }
+    }
+    if (installBtn) {
+      installBtn.textContent = deferredInstallPrompt ? 'Instalar agora' : 'Ver como instalar';
+    }
+
+    if (deferredInstallPrompt && !localStorage.getItem('gf_install_dismissed')) {
+      $('install-banner').classList.add('show');
+    }
+  }
+
+  async function promptInstall() {
+    if (isStandaloneDisplay()) {
+      toast('App já está instalado');
+      return;
+    }
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      $('install-banner').classList.remove('show');
+      updateInstallUI();
+      if (choice && choice.outcome === 'accepted') toast('Instalando…');
+      return;
+    }
+    const howto = $('install-howto');
+    if (howto) howto.classList.remove('hidden');
+    showPage('settings');
+    if (isIos()) {
+      toast('Safari → Compartilhar → Tela de Início');
+    } else {
+      toast('Menu do navegador → Instalar app');
+    }
+  }
+
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
-    if (!localStorage.getItem('gf_install_dismissed')) {
-      $('install-banner').classList.add('show');
-    }
+    updateInstallUI();
   });
 
   window.addEventListener('appinstalled', () => {
     $('install-banner').classList.remove('show');
     deferredInstallPrompt = null;
+    updateInstallUI();
     toast('App instalado');
   });
 
@@ -1143,10 +1465,19 @@
   $('btn-save-cfg').onclick = salvarConfigGrupo;
   $('btn-copy-invite').onclick = copiarConvite;
   $('btn-leave-group').onclick = sairDoGrupo;
+  if ($('btn-delete-group')) $('btn-delete-group').onclick = apagarGrupo;
   $('btn-enable-notifs').onclick = () => ensureNotifPermission(true);
   $('btn-close-modal').onclick = fecharModal;
   $('btn-copy-text').onclick = copiarTextoGrupo;
   $('btn-copy-pix').onclick = copiarPixCopieCola;
+  $('confirm-ok').onclick = () => closeConfirm(true);
+  $('confirm-cancel').onclick = () => closeConfirm(false);
+  $('confirm-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeConfirm(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $('confirm-modal').classList.contains('active')) closeConfirm(false);
+  });
 
   document.querySelectorAll('.bottom-nav button').forEach((btn) => {
     btn.onclick = () => showPage(btn.dataset.page);
@@ -1184,38 +1515,45 @@
     if (e.target === e.currentTarget) fecharModal();
   });
 
-  $('btn-install').onclick = async () => {
-    if (!deferredInstallPrompt) {
-      toast('Use o menu do navegador: Instalar app');
-      return;
-    }
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    $('install-banner').classList.remove('show');
-  };
-  $('btn-install-dismiss').onclick = () => {
-    localStorage.setItem('gf_install_dismissed', '1');
-    $('install-banner').classList.remove('show');
-  };
+  async function onInstallClick() {
+    await promptInstall();
+  }
+  if ($('btn-install')) $('btn-install').onclick = onInstallClick;
+  if ($('btn-install-header')) $('btn-install-header').onclick = onInstallClick;
+  if ($('btn-install-settings')) $('btn-install-settings').onclick = onInstallClick;
+  if ($('btn-install-howto')) {
+    $('btn-install-howto').onclick = () => {
+      const howto = $('install-howto');
+      if (howto) howto.classList.toggle('hidden');
+    };
+  }
+  if ($('btn-install-dismiss')) {
+    $('btn-install-dismiss').onclick = () => {
+      localStorage.setItem('gf_install_dismissed', '1');
+      $('install-banner').classList.remove('show');
+    };
+  }
 
-  // Deep link ?page=
   const params = new URLSearchParams(location.search);
   const pageParam = params.get('page');
   if (pageParam && ['expenses', 'shopping', 'chat', 'settings'].includes(pageParam)) {
-    // will apply after app shell shows
-    const orig = entrarNoApp;
-    // no-op — showPage called after shell; hook via timeout when shell visible
     setTimeout(() => {
       if (!$('app-shell').classList.contains('hidden')) showPage(pageParam);
     }, 1500);
   }
 
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
-    });
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then(() => updateInstallUI())
+      .catch(() => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
   }
 
   updateOfflineUI();
+  updateInstallUI();
+  if ($('notif-status') && typeof Notification !== 'undefined') {
+    ensureNotifPermission(false);
+  }
 })();

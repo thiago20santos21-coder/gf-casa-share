@@ -5,48 +5,141 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isMember(groupId) {
-      return signedIn()
-        && exists(/databases/$(database)/documents/groups/$(groupId))
-        && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+    function groupData(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)).data;
     }
 
-    // Join flow: only memberIds/members change, and the caller adds only themselves.
+    function groupExists(groupId) {
+      return exists(/databases/$(database)/documents/groups/$(groupId));
+    }
+
+    function isMember(groupId) {
+      return signedIn()
+        && groupExists(groupId)
+        && request.auth.uid in groupData(groupId).memberIds;
+    }
+
+    function isCreator(groupId) {
+      return signedIn()
+        && groupExists(groupId)
+        && groupData(groupId).createdBy == request.auth.uid;
+    }
+
+    function adminList(data) {
+      return data.keys().hasAny(['adminIds']) ? data.adminIds : [];
+    }
+
+    function isAdmin(groupId) {
+      return isCreator(groupId)
+        || (signedIn()
+            && groupExists(groupId)
+            && request.auth.uid in adminList(groupData(groupId)));
+    }
+
     function isSelfJoin() {
       return signedIn()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
         && !(request.auth.uid in resource.data.memberIds)
         && request.auth.uid in request.resource.data.memberIds
-        && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1;
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.pix == resource.data.pix
+        && request.resource.data.inviteCode == resource.data.inviteCode;
+    }
+
+    function isSelfLeave() {
+      return signedIn()
+        && request.auth.uid in resource.data.memberIds
+        && !(request.auth.uid in request.resource.data.memberIds)
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
+        && request.auth.uid != resource.data.createdBy
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.pix == resource.data.pix
+        && request.resource.data.inviteCode == resource.data.inviteCode
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['memberIds', 'members', 'adminIds']);
+    }
+
+    function pixUnchanged() {
+      return request.resource.data.pix == resource.data.pix;
+    }
+
+    function coreIdsUnchanged() {
+      return request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.inviteCode == resource.data.inviteCode;
+    }
+
+    function adminIdsUnchanged() {
+      return adminList(request.resource.data) == adminList(resource.data);
+    }
+
+    // Creator/admin clearing another user's groupId after removal
+    function canClearRemovedUserGroupId(userId) {
+      return signedIn()
+        && request.auth.uid != userId
+        && resource.data.keys().hasAny(['groupId'])
+        && resource.data.groupId != null
+        && groupExists(resource.data.groupId)
+        && isAdmin(resource.data.groupId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['groupId'])
+        && request.resource.data.groupId == null;
     }
 
     match /users/{userId} {
       allow read: if signedIn();
-      allow create, update: if signedIn() && request.auth.uid == userId;
+      allow create: if signedIn() && request.auth.uid == userId;
+      allow update: if signedIn() && (
+        request.auth.uid == userId || canClearRemovedUserGroupId(userId)
+      );
       allow delete: if false;
     }
 
     match /groups/{groupId} {
-      // get by ID is required to join (invite doc reveals groupId).
-      // list stays closed so people can't enumerate all groups.
       allow get: if signedIn();
       allow list: if false;
 
       allow create: if signedIn()
         && request.auth.uid in request.resource.data.memberIds
-        && request.resource.data.keys().hasAll(['name', 'inviteCode', 'memberIds', 'members', 'personCount', 'pix', 'createdAt', 'createdBy']);
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'name', 'inviteCode', 'memberIds', 'members', 'personCount',
+          'pix', 'createdAt', 'createdBy', 'adminIds'
+        ]);
 
-      allow update: if isMember(groupId) || isSelfJoin();
+      // Creator: full update (PIX, admins, members…)
+      // Admin: members only (no PIX / adminIds / invite / createdBy)
+      // Others: self-join or self-leave
+      allow update: if coreIdsUnchanged() && (
+        isSelfJoin()
+        || isSelfLeave()
+        || isCreator(groupId)
+        || (
+          isAdmin(groupId)
+          && pixUnchanged()
+          && adminIdsUnchanged()
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['memberIds', 'members', 'personCount'])
+        )
+      );
 
-      allow delete: if signedIn()
-        && resource.data.createdBy == request.auth.uid;
+      allow delete: if isCreator(groupId);
 
       match /expenses/{docId} {
-        allow read, write: if isMember(groupId);
+        allow read: if isMember(groupId);
+        allow create: if isMember(groupId);
+        allow update: if isMember(groupId);
+        allow delete: if isMember(groupId) && (
+          resource.data.createdBy == request.auth.uid || isAdmin(groupId)
+        );
       }
 
       match /shopping/{docId} {
-        allow read, write: if isMember(groupId);
+        allow read: if isMember(groupId);
+        allow create: if isMember(groupId);
+        allow update: if isMember(groupId);
+        allow delete: if isMember(groupId) && (
+          resource.data.createdBy == request.auth.uid || isAdmin(groupId)
+        );
       }
 
       match /messages/{docId} {
@@ -67,19 +160,17 @@ service cloud.firestore {
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 1000;
 
-        allow delete: if isMember(groupId)
-          && (
-            resource.data.uid == request.auth.uid
-            || get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == request.auth.uid
-          );
+        allow delete: if isMember(groupId) && (
+          resource.data.uid == request.auth.uid || isAdmin(groupId)
+        );
       }
     }
 
-    // Invite index: signed-in users can look up a code and create one when making a group.
     match /invites/{code} {
       allow read: if signedIn();
-      allow create, update: if signedIn()
+      allow create: if signedIn()
         && request.resource.data.keys().hasAll(['groupId', 'groupName', 'createdAt']);
+      allow update: if signedIn();
       allow delete: if signedIn();
     }
   }
