@@ -1,12 +1,12 @@
-/* Casa Share — Service Worker v13 (offline-first) */
-const CACHE_NAME = 'casa-share-v13';
+/* Casa Share — Service Worker v14 (offline-first) */
+const CACHE_NAME = 'casa-share-v14';
 const PRECACHE = [
   './',
   './index.html',
   './app.js',
-  './app.js?v=20260723n',
+  './app.js?v=20260723o',
   './manifest.json',
-  './manifest.json?v=20260723n',
+  './manifest.json?v=20260723o',
   './icons/casa-192.png',
   './icons/casa-512.png',
   './icons/casa-maskable-192.png',

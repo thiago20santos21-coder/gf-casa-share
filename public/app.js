@@ -45,10 +45,19 @@
   const seenMsg = new Set();
   let listenersReady = false;
   let snapshotWarmups = 0;
+  const listenReady = { expenses: false, shopping: false, messages: false };
   let activePage = 'expenses';
   let notifPermission = (typeof Notification !== 'undefined' && Notification.permission) || 'default';
 
+  function markCollectionReady(key) {
+    if (listenReady[key]) return;
+    listenReady[key] = true;
+    // Notificações de despesa/chat não dependem umas das outras
+    listenersReady = listenReady.expenses && listenReady.shopping && listenReady.messages;
+  }
+
   function markSnapshotWarm() {
+    // legado — preferir markCollectionReady
     snapshotWarmups += 1;
     if (snapshotWarmups >= 3) listenersReady = true;
   }
@@ -391,11 +400,12 @@
   async function notifyUser(title, body, tag, opts) {
     const options = typeof opts === 'boolean' ? { force: opts } : opts || {};
     if (!canNotify()) {
-      // Ainda sem permissão: ao menos avisa no app
-      if (!options.force) toast((title ? title + ': ' : '') + (body || ''));
-      return;
+      if (!options.silentNoPerm) {
+        toast((title ? title + ': ' : '') + (body || ''));
+      }
+      return false;
     }
-    // Só silencia se a pessoa já está olhando exatamente aquela aba
+    // Silencia só se a pessoa já está na mesma aba E o app está em foco
     const viewingSamePage =
       !document.hidden &&
       document.hasFocus() &&
@@ -403,7 +413,7 @@
       activePage === options.page;
     if (!options.force && viewingSamePage) {
       toast((title ? title + ': ' : '') + (body || ''));
-      return;
+      return false;
     }
     const icon = notifIconUrl();
     const payload = {
@@ -413,8 +423,10 @@
       icon,
       badge: icon,
       renotify: true,
+      requireInteraction: !!options.requireInteraction,
       data: { url: options.url || '/' }
     };
+    let shown = false;
     try {
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification(payload.title, {
@@ -423,25 +435,42 @@
         icon,
         badge: icon,
         renotify: true,
+        requireInteraction: payload.requireInteraction,
         data: payload.data
       });
-    } catch (_) {
+      shown = true;
+    } catch (err) {
+      console.warn('SW notification failed', err);
+    }
+    // Fallback nativo (alguns Android/Chrome em primeiro plano)
+    if (!shown || options.alsoNative) {
       try {
-        if (navigator.serviceWorker.controller) {
-          navigator.serviceWorker.controller.postMessage({
-            type: 'NOTIFY',
-            title: payload.title,
-            body: payload.body,
-            tag: payload.tag,
-            url: payload.data.url
-          });
-        } else {
-          new Notification(payload.title, { body: payload.body, tag: payload.tag, icon });
+        const n = new Notification(payload.title, {
+          body: payload.body,
+          tag: payload.tag,
+          icon,
+          renotify: true
+        });
+        shown = true;
+        n.onclick = () => {
+          try {
+            window.focus();
+          } catch (_) {}
+          n.close();
+        };
+      } catch (err2) {
+        if (!shown) {
+          toast(payload.title + ': ' + payload.body);
+          return false;
         }
-      } catch (__) {
-        toast(payload.title + ': ' + payload.body);
       }
     }
+    return shown;
+  }
+
+  function shouldNotifyFromOther(authorUid) {
+    if (!currentUser) return false;
+    return String(authorUid || '') !== String(currentUser.uid || '');
   }
 
   /* ========== PIX / roles helpers ========== */
@@ -598,6 +627,9 @@
     unsubExpenses = unsubShopping = unsubMessages = unsubGroup = null;
     listenersReady = false;
     snapshotWarmups = 0;
+    listenReady.expenses = false;
+    listenReady.shopping = false;
+    listenReady.messages = false;
     seenExpense.clear();
     seenShop.clear();
     seenMsg.clear();
@@ -796,31 +828,43 @@
       .orderBy('createdAt', 'desc')
       .onSnapshot(
         (snap) => {
-          const prevReady = listenersReady;
           expenses = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
           saveLocalCache('expenses', expenses);
-          if (prevReady) {
+          if (!listenReady.expenses) {
+            snap.docs.forEach((d) => seenExpense.add(d.id));
+            markCollectionReady('expenses');
+          } else {
             snap.docChanges().forEach((ch) => {
               if (ch.type === 'added' && !seenExpense.has(ch.doc.id)) {
-                const data = ch.doc.data();
-                if (data.createdBy !== currentUser.uid) {
+                const data = ch.doc.data() || {};
+                // Ignora eco local de escrita pendente do próprio aparelho
+                if (ch.doc.metadata && ch.doc.metadata.hasPendingWrites) {
+                  seenExpense.add(ch.doc.id);
+                  return;
+                }
+                if (shouldNotifyFromOther(data.createdBy)) {
                   notifyUser(
                     'Nova despesa para pagar',
                     `${data.createdByName || 'Alguém'}: ${data.descricao} — R$ ${fmt(data.valor)}`,
                     'expense-' + ch.doc.id,
-                    { page: 'expenses', url: '/?page=expenses' }
+                    {
+                      page: 'expenses',
+                      url: '/?page=expenses',
+                      alsoNative: true,
+                      requireInteraction: false
+                    }
                   );
                 }
               }
               seenExpense.add(ch.doc.id);
             });
-          } else {
-            snap.docs.forEach((d) => seenExpense.add(d.id));
-            markSnapshotWarm();
           }
           renderExpenses();
         },
-        (err) => console.error('expenses listen', err)
+        (err) => {
+          console.error('expenses listen', err);
+          markCollectionReady('expenses');
+        }
       );
 
     unsubShopping = db
@@ -830,42 +874,48 @@
       .orderBy('createdAt', 'desc')
       .onSnapshot(
         (snap) => {
-          const prevReady = listenersReady;
           shopping = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
           saveLocalCache('shopping', shopping);
-          if (prevReady) {
+          if (!listenReady.shopping) {
+            snap.docs.forEach((d) => seenShop.add(d.id));
+            markCollectionReady('shopping');
+          } else {
             snap.docChanges().forEach((ch) => {
               if (ch.type === 'added' && !seenShop.has(ch.doc.id)) {
-                const data = ch.doc.data();
-                if (data.createdBy !== currentUser.uid) {
+                const data = ch.doc.data() || {};
+                if (ch.doc.metadata && ch.doc.metadata.hasPendingWrites) {
+                  seenShop.add(ch.doc.id);
+                  return;
+                }
+                if (shouldNotifyFromOther(data.createdBy)) {
                   notifyUser(
                     'Lista de compras',
                     `${data.createdByName || 'Alguém'} adicionou: ${data.text}`,
                     'shop-' + ch.doc.id,
-                    { page: 'shopping', url: '/?page=shopping' }
+                    { page: 'shopping', url: '/?page=shopping', alsoNative: true }
                   );
                 }
               }
               if (ch.type === 'modified') {
-                const data = ch.doc.data();
-                if (data.done && data.doneBy && data.doneBy !== currentUser.uid) {
+                const data = ch.doc.data() || {};
+                if (data.done && data.doneBy && shouldNotifyFromOther(data.doneBy)) {
                   notifyUser(
                     'Item comprado',
                     `${data.doneByName || 'Alguém'} comprou: ${data.text}`,
                     'shop-done-' + ch.doc.id,
-                    { page: 'shopping', url: '/?page=shopping' }
+                    { page: 'shopping', url: '/?page=shopping', alsoNative: true }
                   );
                 }
               }
               seenShop.add(ch.doc.id);
             });
-          } else {
-            snap.docs.forEach((d) => seenShop.add(d.id));
-            markSnapshotWarm();
           }
           renderShopping();
         },
-        (err) => console.error('shopping listen', err)
+        (err) => {
+          console.error('shopping listen', err);
+          markCollectionReady('shopping');
+        }
       );
 
     unsubMessages = db
@@ -876,32 +926,37 @@
       .limitToLast(100)
       .onSnapshot(
         (snap) => {
-          const prevReady = listenersReady;
           messages = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
           saveLocalCache('messages', messages);
-          if (prevReady) {
+          if (!listenReady.messages) {
+            snap.docs.forEach((d) => seenMsg.add(d.id));
+            markCollectionReady('messages');
+          } else {
             snap.docChanges().forEach((ch) => {
               if (ch.type === 'added' && !seenMsg.has(ch.doc.id)) {
-                const data = ch.doc.data();
-                if (data.uid !== currentUser.uid) {
+                const data = ch.doc.data() || {};
+                if (ch.doc.metadata && ch.doc.metadata.hasPendingWrites) {
+                  seenMsg.add(ch.doc.id);
+                  return;
+                }
+                if (shouldNotifyFromOther(data.uid)) {
                   const preview = String(data.text || '').slice(0, 120);
-                  notifyUser(
-                    data.name || 'Nova mensagem',
-                    preview,
-                    'msg-' + ch.doc.id,
-                    { page: 'chat', url: '/?page=chat' }
-                  );
+                  notifyUser(data.name || 'Nova mensagem', preview, 'msg-' + ch.doc.id, {
+                    page: 'chat',
+                    url: '/?page=chat',
+                    alsoNative: true
+                  });
                 }
               }
               seenMsg.add(ch.doc.id);
             });
-          } else {
-            snap.docs.forEach((d) => seenMsg.add(d.id));
-            markSnapshotWarm();
           }
           renderChat();
         },
-        (err) => console.error('chat listen', err)
+        (err) => {
+          console.error('chat listen', err);
+          markCollectionReady('messages');
+        }
       );
   }
 
@@ -1668,6 +1723,22 @@
   $('btn-leave-group').onclick = sairDoGrupo;
   if ($('btn-delete-group')) $('btn-delete-group').onclick = apagarGrupo;
   $('btn-enable-notifs').onclick = () => ensureNotifPermission(true);
+  if ($('btn-test-notif')) {
+    $('btn-test-notif').onclick = async () => {
+      const ok = await ensureNotifPermission(true);
+      if (!ok) {
+        toast('Ative as notificações primeiro');
+        return;
+      }
+      const shown = await notifyUser(
+        'Teste Casa Share',
+        'Se você viu este alerta, as notificações estão ok neste aparelho.',
+        'test-notif-' + Date.now(),
+        { force: true, alsoNative: true }
+      );
+      if (shown) toast('Notificação de teste enviada');
+    };
+  }
   $('btn-close-modal').onclick = fecharModal;
   $('btn-copy-text').onclick = copiarTextoGrupo;
   $('btn-copy-pix').onclick = copiarPixCopieCola;
@@ -1745,7 +1816,7 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-        .register('/sw.js?v=13', { updateViaCache: 'none' })
+        .register('/sw.js?v=14', { updateViaCache: 'none' })
         .then((reg) => {
           reg.update().catch(() => {});
           if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -1758,7 +1829,7 @@
           updateInstallUI();
         })
         .catch(() => {
-          navigator.serviceWorker.register('./sw.js?v=13', { updateViaCache: 'none' }).catch(() => {});
+          navigator.serviceWorker.register('./sw.js?v=14', { updateViaCache: 'none' }).catch(() => {});
         });
     }
 
