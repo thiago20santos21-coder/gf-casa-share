@@ -73,6 +73,16 @@ service cloud.firestore {
       return adminList(request.resource.data) == adminList(resource.data);
     }
 
+    // Qualquer membro pode atualizar só os saldos de cartão
+    function isCardBalancesOnlyUpdate(groupId) {
+      return isMember(groupId)
+        && coreIdsUnchanged()
+        && pixUnchanged()
+        && adminIdsUnchanged()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['cardBalances']);
+    }
+
     // Creator/admin clearing another user's groupId after removal
     function canClearRemovedUserGroupId(userId) {
       return signedIn()
@@ -112,6 +122,7 @@ service cloud.firestore {
       allow update: if coreIdsUnchanged() && (
         isSelfJoin()
         || isSelfLeave()
+        || isCardBalancesOnlyUpdate(groupId)
         || isCreator(groupId)
         || (
           isAdmin(groupId)

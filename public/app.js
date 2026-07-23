@@ -1262,8 +1262,80 @@
       if (remove) remove.onclick = () => removerMembro(m);
       list.appendChild(el);
     });
+    renderCardBalances();
     renderExpenses();
     updateInstallUI();
+  }
+
+  function getCardBalance(uid) {
+    const map = (currentGroup && currentGroup.cardBalances) || {};
+    const v = map[uid];
+    return typeof v === 'number' && !isNaN(v) ? v : 0;
+  }
+
+  function renderCardBalances() {
+    const box = $('card-balances-list');
+    if (!box || !currentGroup) return;
+    box.innerHTML = '';
+    const members = currentGroup.members || [];
+    if (!members.length) {
+      box.innerHTML = '<p class="hint" style="margin:0">Nenhum membro no grupo ainda.</p>';
+      return;
+    }
+    members.forEach((m) => {
+      const bal = getCardBalance(m.uid);
+      const row = document.createElement('div');
+      row.className = 'card-bal-row';
+      row.innerHTML = `
+        <div class="member-name">${escapeHTML(m.name || 'Membro')}</div>
+        <div class="bal-input-wrap">
+          <span>R$</span>
+          <input type="number" min="0" step="0.01" inputmode="decimal" value="${bal.toFixed(2)}" aria-label="Saldo de ${escapeHTML(m.name || 'membro')}">
+        </div>
+        <button type="button" class="btn btn-primary btn-sm bal-save">Salvar</button>`;
+      const input = row.querySelector('input');
+      const btn = row.querySelector('.bal-save');
+      const save = async () => {
+        const raw = String(input.value).replace(',', '.');
+        const num = parseFloat(raw);
+        if (isNaN(num) || num < 0) {
+          input.classList.add('shake');
+          setTimeout(() => input.classList.remove('shake'), 400);
+          toast('Informe um valor válido (R$)');
+          return;
+        }
+        const rounded = Math.round(num * 100) / 100;
+        btn.disabled = true;
+        try {
+          await salvarSaldoCartao(m.uid, rounded);
+        } finally {
+          btn.disabled = false;
+        }
+      };
+      btn.onclick = save;
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          save();
+        }
+      });
+      box.appendChild(row);
+    });
+  }
+
+  async function salvarSaldoCartao(uid, valor) {
+    if (!groupId || !uid) return;
+    const payload = { ['cardBalances.' + uid]: valor };
+    // Atualização otimista local
+    if (!currentGroup.cardBalances) currentGroup.cardBalances = {};
+    currentGroup.cardBalances[uid] = valor;
+    saveLocalCache('group', currentGroup);
+    const res = await runWrite({ action: 'updateGroup', payload });
+    if (res && res.error && res.error.code === 'permission-denied') {
+      toast('Sem permissão para alterar saldo');
+      return;
+    }
+    toast('Saldo de cartão atualizado');
   }
 
   async function setMemberAdmin(uid, makeAdmin) {
@@ -2144,7 +2216,7 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-        .register('/sw.js?v=18', { updateViaCache: 'none' })
+        .register('/sw.js?v=19', { updateViaCache: 'none' })
         .then((reg) => {
           reg.update().catch(() => {});
           if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -2157,7 +2229,7 @@
           updateInstallUI();
         })
         .catch(() => {
-          navigator.serviceWorker.register('./sw.js?v=18', { updateViaCache: 'none' }).catch(() => {});
+          navigator.serviceWorker.register('./sw.js?v=19', { updateViaCache: 'none' }).catch(() => {});
         });
     }
 

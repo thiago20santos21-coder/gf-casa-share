@@ -10,10 +10,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Casa Share">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="manifest" href="manifest.json?v=20260723s">
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/casa-192.png?v=20260723s">
-  <link rel="icon" type="image/png" sizes="512x512" href="icons/casa-512.png?v=20260723s">
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/casa-apple-180.png?v=20260723s">
+  <link rel="manifest" href="manifest.json?v=20260723t">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/casa-192.png?v=20260723t">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/casa-512.png?v=20260723t">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/casa-apple-180.png?v=20260723t">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -253,6 +253,18 @@
     .member-tag.admin{color:var(--teal)}
     .member-actions{display:flex;flex-wrap:wrap;gap:.3rem;width:100%;margin-top:.35rem;padding-left:42px}
     .member-actions .btn{width:auto;margin:0}
+    .card-balances{display:flex;flex-direction:column;gap:.55rem;margin-top:.75rem}
+    .card-bal-row{
+      display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;
+      padding:.75rem .85rem;background:var(--bg-soft);border:1px solid var(--border);border-radius:12px
+    }
+    .card-bal-row .member-name{flex:1;min-width:100px}
+    .card-bal-row .bal-input-wrap{display:flex;align-items:center;gap:.35rem}
+    .card-bal-row .bal-input-wrap span{color:var(--text-3);font-size:.85rem;font-weight:600}
+    .card-bal-row input[type="number"]{
+      width:7.5rem;padding:.55rem .65rem;font-variant-numeric:tabular-nums;font-weight:600
+    }
+    .card-bal-row .btn{width:auto;margin:0}
     .roles-box{background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:.85rem;margin-bottom:.85rem;font-size:.8rem;color:var(--text-2);line-height:1.45}
     .roles-box strong{color:var(--text)}
     .install-card-actions{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.75rem}
@@ -315,7 +327,7 @@
   <div id="auth-screen" class="hidden">
     <div class="wrap">
       <div class="brand">
-        <img class="brand-logo" src="icons/casa-192.png?v=20260723s" alt="Casa Share">
+        <img class="brand-logo" src="icons/casa-192.png?v=20260723t" alt="Casa Share">
         <div class="brand-mark">Casa Share</div>
         <p>Despesas, compras e chat sincronizados para o grupo</p>
       </div>
@@ -511,6 +523,12 @@
           <div class="members" id="members-list"></div>
         </div>
 
+        <div class="card" id="card-balances-card">
+          <h3>Saldos no cartão</h3>
+          <p class="hint" style="margin-top:0">Quanto cada pessoa tem disponível. Qualquer membro pode alterar — sincroniza na hora para o grupo.</p>
+          <div class="card-balances" id="card-balances-list"></div>
+        </div>
+
         <div class="card" id="pix-card">
           <h3>PIX do recebedor</h3>
           <p class="hint" id="pix-hint" style="margin-top:0">Somente o criador altera. Celular com 10 dígitos (ex: 7999273882) vira automaticamente +55 com o 9º dígito.</p>
@@ -592,7 +610,7 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="app.js?v=20260723s"></script>
+  <script src="app.js?v=20260723t"></script>
 </body>
 </html>
 
