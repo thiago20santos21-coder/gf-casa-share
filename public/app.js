@@ -524,32 +524,85 @@
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
 
-  function gerarPixPayload(chave, nome, cidade, valor) {
-    function tlv(id, val) {
-      const l = String(val).length.toString().padStart(2, '0');
-      return id + l + val;
+  function stripAccents(s) {
+    return String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function normalizePixKey(raw) {
+    let chave = String(raw || '').trim().replace(/\s+/g, '');
+    if (!chave) return '';
+    if (chave.includes('@')) return chave.toLowerCase();
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(chave)) {
+      return chave.toLowerCase();
     }
-    const gui = tlv('00', 'br.gov.bcb.pix');
-    const mai = tlv('26', gui + tlv('01', chave));
+    const digits = chave.replace(/\D/g, '');
+    // Telefone E.164
+    if (chave.startsWith('+')) {
+      return '+' + digits;
+    }
+    if (/^55\d{10,11}$/.test(digits)) {
+      return '+' + digits;
+    }
+    // Celular BR 11 dígitos (DDD + 9…)
+    if (/^\d{11}$/.test(digits) && digits.charAt(2) === '9') {
+      return '+55' + digits;
+    }
+    // Fixo BR 10 dígitos
+    if (/^\d{10}$/.test(digits) && /[()\-]/.test(String(raw || ''))) {
+      return '+55' + digits;
+    }
+    // CPF / CNPJ
+    if (/^\d{11}$/.test(digits) || /^\d{14}$/.test(digits)) return digits;
+    return chave;
+  }
+
+  function gerarPixPayload(chaveRaw, nomeRaw, cidadeRaw, valor) {
+    function tlv(id, val) {
+      const str = String(val);
+      // Spec Pix: tamanho em bytes UTF-8
+      const len = new TextEncoder().encode(str).length;
+      return id + String(len).padStart(2, '0') + str;
+    }
+
+    const chave = normalizePixKey(chaveRaw);
+    if (!chave) throw new Error('Chave PIX vazia');
+
+    let nome = stripAccents(nomeRaw || 'RECEBEDOR').toUpperCase().substring(0, 25);
+    if (!nome) nome = 'RECEBEDOR';
+    let cidade = stripAccents(cidadeRaw || 'SAO PAULO').toUpperCase().substring(0, 15);
+    if (!cidade) cidade = 'SAO PAULO';
+
+    const amount = Number(valor);
+    const amountStr = amount > 0 ? amount.toFixed(2) : '';
+
+    const gui = tlv('00', 'br.gov.bcb.pix') + tlv('01', chave);
+    const mai = tlv('26', gui);
+
     let payload = '';
-    payload += tlv('00', '01');
+    payload += tlv('00', '01'); // Payload Format Indicator
+    payload += tlv('01', '11'); // Point of Initiation — estático
     payload += mai;
     payload += tlv('52', '0000');
     payload += tlv('53', '986');
-    if (valor > 0) payload += tlv('54', Number(valor).toFixed(2));
+    if (amountStr) payload += tlv('54', amountStr);
     payload += tlv('58', 'BR');
-    payload += tlv('59', (nome || 'RECEBEDOR').substring(0, 25).toUpperCase());
-    payload += tlv('60', (cidade || 'SAO PAULO').substring(0, 15).toUpperCase());
+    payload += tlv('59', nome);
+    payload += tlv('60', cidade);
     payload += tlv('62', tlv('05', '***'));
     payload += '6304';
-    const bytes = [...payload].map((c) => c.charCodeAt(0));
+
+    const bytes = new TextEncoder().encode(payload);
     let crc = 0xffff;
-    for (const b of bytes) {
-      crc ^= b << 8;
-      for (let i = 0; i < 8; i++) {
-        if (crc & 0x8000) crc = (crc << 1) ^ 0x1021;
-        else crc <<= 1;
-        crc &= 0xffff;
+    for (let i = 0; i < bytes.length; i++) {
+      crc ^= bytes[i] << 8;
+      for (let j = 0; j < 8; j++) {
+        if (crc & 0x8000) crc = ((crc << 1) ^ 0x1021) & 0xffff;
+        else crc = (crc << 1) & 0xffff;
       }
     }
     payload += crc.toString(16).toUpperCase().padStart(4, '0');
@@ -557,11 +610,46 @@
   }
 
   function renderQr(payload) {
-    if (typeof qrcode !== 'function') return;
-    const qr = qrcode(0, 'M');
-    qr.addData(payload);
-    qr.make();
-    $('qr-img').src = qr.createDataURL(6, 4);
+    const img = $('qr-img');
+    const wrap = $('qr-wrap');
+    if (!img) return;
+    if (typeof qrcode !== 'function') {
+      if (wrap) wrap.innerHTML = '<p class="hint">QR indisponível offline — use o Pix Copia e Cola.</p>';
+      return;
+    }
+    try {
+      const qr = qrcode(0, 'M');
+      qr.addData(payload);
+      qr.make();
+      img.alt = 'QR Code PIX';
+      img.src = qr.createDataURL(8, 2);
+      img.style.display = 'block';
+    } catch (err) {
+      console.error('QR', err);
+      toast('Não foi possível gerar o QR — use o Copia e Cola');
+    }
+  }
+
+  function validatePixPayload(payload) {
+    if (!payload || payload.length < 50) return false;
+    if (!payload.startsWith('000201')) return false;
+    if (!payload.includes('br.gov.bcb.pix')) return false;
+    if (!payload.includes('52040000')) return false;
+    if (!payload.includes('5303986')) return false;
+    if (!/6304[0-9A-F]{4}$/.test(payload)) return false;
+    // reconfere CRC
+    const base = payload.slice(0, -4);
+    const given = payload.slice(-4);
+    const bytes = new TextEncoder().encode(base);
+    let crc = 0xffff;
+    for (let i = 0; i < bytes.length; i++) {
+      crc ^= bytes[i] << 8;
+      for (let j = 0; j < 8; j++) {
+        if (crc & 0x8000) crc = ((crc << 1) ^ 0x1021) & 0xffff;
+        else crc = (crc << 1) & 0xffff;
+      }
+    }
+    return given === crc.toString(16).toUpperCase().padStart(4, '0');
   }
 
   /* ========== Auth / Group ========== */
@@ -1547,14 +1635,29 @@
       $('cfg-error').textContent = 'Somente o criador pode alterar o PIX.';
       return;
     }
+    const chave = normalizePixKey($('cfg-pix-key').value);
+    const nome = $('cfg-pix-name').value.trim();
+    const cidade = $('cfg-pix-city').value.trim();
+    if (!chave) {
+      $('cfg-error').textContent = 'Informe a chave PIX.';
+      return;
+    }
+    if (!nome) {
+      $('cfg-error').textContent = 'Informe o nome do recebedor.';
+      return;
+    }
+    if (!cidade) {
+      $('cfg-error').textContent = 'Informe a cidade.';
+      return;
+    }
     try {
+      // valida gerando um payload de teste (R$ 1,00)
+      const test = gerarPixPayload(chave, nome, cidade, 1);
+      if (!validatePixPayload(test)) throw new Error('Chave/nome/cidade geram PIX inválido');
       await db.collection('groups').doc(groupId).update({
-        pix: {
-          chave: $('cfg-pix-key').value.trim(),
-          nome: $('cfg-pix-name').value.trim(),
-          cidade: $('cfg-pix-city').value.trim()
-        }
+        pix: { chave, nome, cidade }
       });
+      $('cfg-pix-key').value = chave;
       toast('PIX salvo');
     } catch (err) {
       $('cfg-error').textContent = err.message || 'Erro ao salvar.';
@@ -1608,8 +1711,19 @@
   function gerarResumoEPix() {
     if (!expenses.length) return;
     const pix = (currentGroup && currentGroup.pix) || {};
-    if (!pix.chave) {
-      toast('Configure a chave PIX em Grupo');
+    const chaveNorm = normalizePixKey(pix.chave || '');
+    if (!chaveNorm) {
+      toast('Configure a chave PIX em Grupo (e salve)');
+      showPage('settings');
+      return;
+    }
+    if (!(pix.nome || '').trim()) {
+      toast('Informe o nome do recebedor no PIX (aba Grupo)');
+      showPage('settings');
+      return;
+    }
+    if (!(pix.cidade || '').trim()) {
+      toast('Informe a cidade do PIX (aba Grupo)');
       showPage('settings');
       return;
     }
@@ -1627,7 +1741,11 @@
       total += Number(g.valor) || 0;
       detalhes += `• ${g.descricao}: R$ ${fmt(g.valor)}\n`;
     });
-    const porPagante = total / n;
+    if (total <= 0) {
+      toast('Total inválido para gerar PIX');
+      return;
+    }
+    const porPagante = Math.round((total / n) * 100) / 100;
     const creatorMember = ((currentGroup.members || []).find((m) => m.uid === currentGroup.createdBy) || {});
     const creatorName = creatorMember.name || pix.nome || 'Criador';
 
@@ -1637,14 +1755,31 @@
     texto += `*Pagantes (${n}):* ${payers.map((p) => p.name || 'Membro').join(', ')}\n`;
     texto += `*Valor por pagante: R$ ${fmt(porPagante)}*\n\n`;
     texto += `_O criador (${creatorName}) recebe e não paga._\n\n`;
-    texto += `*Chave PIX:* ${pix.chave}\n*Titular:* ${pix.nome || creatorName}\n`;
+    texto += `*Chave PIX:* ${chaveNorm}\n*Titular:* ${pix.nome || creatorName}\n`;
 
-    pixPayloadAtual = gerarPixPayload(pix.chave, pix.nome || creatorName, pix.cidade, porPagante);
+    try {
+      pixPayloadAtual = gerarPixPayload(chaveNorm, pix.nome || creatorName, pix.cidade, porPagante);
+    } catch (err) {
+      console.error(err);
+      toast(err.message || 'Erro ao gerar código PIX');
+      return;
+    }
+    if (!validatePixPayload(pixPayloadAtual)) {
+      toast('Código PIX inválido — confira chave, nome e cidade');
+      console.warn('PIX payload', pixPayloadAtual);
+      return;
+    }
+
     $('pix-code-display').value = pixPayloadAtual;
     $('texto-grupo').value = texto;
     $('pix-modal-hint').textContent = isCreator()
       ? `Você recebe. Cada pagante deve transferir R$ ${fmt(porPagante)}.`
       : `Sua parte: R$ ${fmt(porPagante)} (criador não paga).`;
+    // garante container do QR
+    const wrap = $('qr-wrap');
+    if (wrap && !wrap.querySelector('#qr-img')) {
+      wrap.innerHTML = '<img id="qr-img" alt="QR Code PIX">';
+    }
     renderQr(pixPayloadAtual);
     $('btn-copy-text').textContent = 'Copiar texto WhatsApp';
     $('btn-copy-text').classList.remove('copied');
@@ -1658,12 +1793,38 @@
     });
   }
 
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch (__) {
+        return false;
+      }
+    }
+  }
+
   function fecharModal() {
     $('pix-modal').classList.remove('active');
   }
 
   async function copiarTextoGrupo() {
-    await navigator.clipboard.writeText($('texto-grupo').value);
+    const ok = await copyText($('texto-grupo').value);
+    if (!ok) {
+      toast('Não foi possível copiar — selecione o texto manualmente');
+      return;
+    }
     const b = $('btn-copy-text');
     b.textContent = 'Texto copiado';
     b.classList.add('copied');
@@ -1674,7 +1835,16 @@
   }
 
   async function copiarPixCopieCola() {
-    await navigator.clipboard.writeText(pixPayloadAtual);
+    if (!pixPayloadAtual || !validatePixPayload(pixPayloadAtual)) {
+      toast('Gere o PIX novamente');
+      return;
+    }
+    const ok = await copyText(pixPayloadAtual);
+    if (!ok) {
+      $('pix-code-display').select();
+      toast('Selecione e copie o código manualmente');
+      return;
+    }
     const b = $('btn-copy-pix');
     b.textContent = 'Código PIX copiado';
     setTimeout(() => {
@@ -1866,7 +2036,7 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-        .register('/sw.js?v=15', { updateViaCache: 'none' })
+        .register('/sw.js?v=16', { updateViaCache: 'none' })
         .then((reg) => {
           reg.update().catch(() => {});
           if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -1879,7 +2049,7 @@
           updateInstallUI();
         })
         .catch(() => {
-          navigator.serviceWorker.register('./sw.js?v=15', { updateViaCache: 'none' }).catch(() => {});
+          navigator.serviceWorker.register('./sw.js?v=16', { updateViaCache: 'none' }).catch(() => {});
         });
     }
 
