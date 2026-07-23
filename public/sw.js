@@ -124,7 +124,7 @@ self.addEventListener('push', (event) => {
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
   } catch (_) {}
-  const icon = self.location.origin + '/icons/icon-192.png';
+  const icon = self.location.origin + '/icons/casa-192.png';
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
