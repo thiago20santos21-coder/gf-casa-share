@@ -21,4 +21,7 @@ Thumbs.db
 .idea/
 .vscode/
 AppDespesas.zip
-scripts/enable-apis.js
+scripts/enable-*.js
+scripts/*.ps1
+scripts/read-cred.ps1
+scripts/publish-github.ps1
