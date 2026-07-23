@@ -1,4 +1,4 @@
-﻿/* GF Casa Share â€” app logic */
+﻿/* Casa Share â€” app logic */
 (function () {
   'use strict';
 
@@ -313,7 +313,7 @@
     notifPermission = res;
     if (res === 'granted') {
       if (statusEl) statusEl.textContent = 'NotificaÃ§Ãµes ativas neste aparelho.';
-      await notifyUser('GF Casa Share', 'NotificaÃ§Ãµes ligadas. VocÃª serÃ¡ avisado de novidades no grupo.', 'notif-on', true);
+      await notifyUser('Casa Share', 'NotificaÃ§Ãµes ligadas. VocÃª serÃ¡ avisado de novidades no grupo.', 'notif-on', true);
       return true;
     }
     if (statusEl) statusEl.textContent = 'PermissÃ£o negada.';
@@ -335,7 +335,7 @@
     const icon = notifIconUrl();
     try {
       const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification(title || 'GF Casa Share', {
+      await reg.showNotification(title || 'Casa Share', {
         body: body || '',
         tag: tag || 'gf-update',
         icon,
@@ -345,7 +345,7 @@
       });
     } catch (_) {
       try {
-        new Notification(title || 'GF Casa Share', { body: body || '', tag, icon });
+        new Notification(title || 'Casa Share', { body: body || '', tag, icon });
       } catch (__) {}
     }
   }
