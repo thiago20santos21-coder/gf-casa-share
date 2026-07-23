@@ -39,6 +39,7 @@
   const seenMsg = new Set();
   let listenersReady = false;
   let snapshotWarmups = 0;
+  let activePage = 'expenses';
   let notifPermission = (typeof Notification !== 'undefined' && Notification.permission) || 'default';
 
   function markSnapshotWarm() {
@@ -313,7 +314,9 @@
     notifPermission = res;
     if (res === 'granted') {
       if (statusEl) statusEl.textContent = 'Notificações ativas neste aparelho.';
-      await notifyUser('Casa Share', 'Notificações ligadas. Você será avisado de novidades no grupo.', 'notif-on', true);
+      await notifyUser('Casa Share', 'Notificações ligadas. Você será avisado de chat e despesas.', 'notif-on', {
+        force: true
+      });
       return true;
     }
     if (statusEl) statusEl.textContent = 'Permissão negada.';
@@ -328,25 +331,65 @@
     }
   }
 
-  /** @param {boolean} [force] ignore focus check (permission test / PIX) */
-  async function notifyUser(title, body, tag, force) {
-    if (!canNotify()) return;
-    if (!force && !document.hidden && document.hasFocus()) return;
+  /**
+   * @param {string} title
+   * @param {string} body
+   * @param {string} [tag]
+   * @param {boolean|object} [opts] force, page ('chat'|'expenses'|'shopping'), url
+   */
+  async function notifyUser(title, body, tag, opts) {
+    const options = typeof opts === 'boolean' ? { force: opts } : opts || {};
+    if (!canNotify()) {
+      // Ainda sem permissão: ao menos avisa no app
+      if (!options.force) toast((title ? title + ': ' : '') + (body || ''));
+      return;
+    }
+    // Só silencia se a pessoa já está olhando exatamente aquela aba
+    const viewingSamePage =
+      !document.hidden &&
+      document.hasFocus() &&
+      options.page &&
+      activePage === options.page;
+    if (!options.force && viewingSamePage) {
+      toast((title ? title + ': ' : '') + (body || ''));
+      return;
+    }
     const icon = notifIconUrl();
+    const payload = {
+      title: title || 'Casa Share',
+      body: body || '',
+      tag: tag || 'casa-update-' + Date.now(),
+      icon,
+      badge: icon,
+      renotify: true,
+      data: { url: options.url || '/' }
+    };
     try {
       const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification(title || 'Casa Share', {
-        body: body || '',
-        tag: tag || 'gf-update',
+      await reg.showNotification(payload.title, {
+        body: payload.body,
+        tag: payload.tag,
         icon,
         badge: icon,
         renotify: true,
-        data: { url: '/' }
+        data: payload.data
       });
     } catch (_) {
       try {
-        new Notification(title || 'Casa Share', { body: body || '', tag, icon });
-      } catch (__) {}
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'NOTIFY',
+            title: payload.title,
+            body: payload.body,
+            tag: payload.tag,
+            url: payload.data.url
+          });
+        } else {
+          new Notification(payload.title, { body: payload.body, tag: payload.tag, icon });
+        }
+      } catch (__) {
+        toast(payload.title + ': ' + payload.body);
+      }
     }
   }
 
@@ -697,7 +740,12 @@
               if (ch.type === 'added' && !seenExpense.has(ch.doc.id)) {
                 const data = ch.doc.data();
                 if (data.createdBy !== currentUser.uid) {
-                  notifyUser('Nova despesa', `${data.createdByName || 'Alguém'}: ${data.descricao} — R$ ${fmt(data.valor)}`, 'expense-' + ch.doc.id);
+                  notifyUser(
+                    'Nova despesa para pagar',
+                    `${data.createdByName || 'Alguém'}: ${data.descricao} — R$ ${fmt(data.valor)}`,
+                    'expense-' + ch.doc.id,
+                    { page: 'expenses', url: '/?page=expenses' }
+                  );
                 }
               }
               seenExpense.add(ch.doc.id);
@@ -725,13 +773,23 @@
               if (ch.type === 'added' && !seenShop.has(ch.doc.id)) {
                 const data = ch.doc.data();
                 if (data.createdBy !== currentUser.uid) {
-                  notifyUser('Lista de compras', `${data.createdByName || 'Alguém'} adicionou: ${data.text}`, 'shop-' + ch.doc.id);
+                  notifyUser(
+                    'Lista de compras',
+                    `${data.createdByName || 'Alguém'} adicionou: ${data.text}`,
+                    'shop-' + ch.doc.id,
+                    { page: 'shopping', url: '/?page=shopping' }
+                  );
                 }
               }
               if (ch.type === 'modified') {
                 const data = ch.doc.data();
                 if (data.done && data.doneBy && data.doneBy !== currentUser.uid) {
-                  notifyUser('Item comprado', `${data.doneByName || 'Alguém'} comprou: ${data.text}`, 'shop-done-' + ch.doc.id);
+                  notifyUser(
+                    'Item comprado',
+                    `${data.doneByName || 'Alguém'} comprou: ${data.text}`,
+                    'shop-done-' + ch.doc.id,
+                    { page: 'shopping', url: '/?page=shopping' }
+                  );
                 }
               }
               seenShop.add(ch.doc.id);
@@ -760,7 +818,13 @@
               if (ch.type === 'added' && !seenMsg.has(ch.doc.id)) {
                 const data = ch.doc.data();
                 if (data.uid !== currentUser.uid) {
-                  notifyUser(data.name || 'Chat', data.text, 'msg-' + ch.doc.id);
+                  const preview = String(data.text || '').slice(0, 120);
+                  notifyUser(
+                    data.name || 'Nova mensagem',
+                    preview,
+                    'msg-' + ch.doc.id,
+                    { page: 'chat', url: '/?page=chat' }
+                  );
                 }
               }
               seenMsg.add(ch.doc.id);
@@ -993,6 +1057,7 @@
   }
 
   function showPage(page) {
+    activePage = page;
     ['expenses', 'shopping', 'chat', 'settings'].forEach((p) => {
       $('page-' + p).classList.toggle('hidden', p !== page);
     });
@@ -1406,12 +1471,11 @@
     $('btn-copy-pix').textContent = 'Copiar Pix Copia e Cola';
     $('pix-modal').classList.add('active');
 
-    notifyUser(
-      'PIX gerado',
-      `Valor por pagante: R$ ${fmt(porPagante)}`,
-      'pix-ready-' + Date.now(),
-      true
-    );
+    notifyUser('PIX gerado', `Valor por pagante: R$ ${fmt(porPagante)}`, 'pix-ready-' + Date.now(), {
+      force: true,
+      page: 'expenses',
+      url: '/?page=expenses'
+    });
   }
 
   function fecharModal() {
@@ -1606,7 +1670,7 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-        .register('/sw.js?v=7', { updateViaCache: 'none' })
+        .register('/sw.js?v=11', { updateViaCache: 'none' })
         .then((reg) => {
           reg.update().catch(() => {});
           if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -1619,7 +1683,7 @@
           updateInstallUI();
         })
         .catch(() => {
-          navigator.serviceWorker.register('./sw.js?v=7', { updateViaCache: 'none' }).catch(() => {});
+          navigator.serviceWorker.register('./sw.js?v=11', { updateViaCache: 'none' }).catch(() => {});
         });
     }
 
