@@ -1,1580 +1,521 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>GF Casa Share</title>
-    <meta name="theme-color" content="#0f0f1a">
-    <meta name="description" content="Despesas, lista de compras e chat em tempo real para o grupo">
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/svg+xml" href="icon.svg">
-    <link rel="apple-touch-icon" href="icon.svg">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GF Casa Share</title>
+  <meta name="theme-color" content="#0b0f14">
+  <meta name="description" content="Despesas, lista de compras e chat em tempo real para o grupo">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Casa Share">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0b0f14;
+      --bg-elevated:#121820;
+      --bg-soft:#18212c;
+      --border:rgba(255,255,255,.08);
+      --border-strong:rgba(255,255,255,.14);
+      --text:#e8edf2;
+      --text-2:#9aa7b5;
+      --text-3:#6b7785;
+      --teal:#3d9a8b;
+      --teal-soft:rgba(61,154,139,.16);
+      --gold:#e8c07d;
+      --gold-soft:rgba(232,192,125,.14);
+      --danger:#e07a7a;
+      --danger-soft:rgba(224,122,122,.12);
+      --radius:16px;
+      --radius-sm:10px;
+      --shadow:0 12px 40px rgba(0,0,0,.35);
+      --nav-h:64px;
+      --safe-b:env(safe-area-inset-bottom,0px);
+      --font:"IBM Plex Sans",system-ui,sans-serif;
+      --display:"Sora",system-ui,sans-serif;
+      --ease:cubic-bezier(.4,0,.2,1);
+    }
+    html,body{height:100%}
+    body{
+      font-family:var(--font);
+      background:
+        radial-gradient(900px 480px at 90% -10%, rgba(61,154,139,.12), transparent 55%),
+        radial-gradient(700px 420px at -10% 110%, rgba(232,192,125,.08), transparent 50%),
+        var(--bg);
+      color:var(--text);
+      min-height:100vh;
+      overflow-x:hidden;
+      -webkit-font-smoothing:antialiased;
+    }
+    .hidden{display:none!important}
+    button,input,select,textarea{font:inherit;color:inherit}
+    button{cursor:pointer}
+    a{color:var(--teal)}
 
-        :root {
-            --bg-main: #0f0f1a;
-            --bg-card: rgba(22, 22, 40, 0.75);
-            --bg-card-hover: rgba(30, 30, 55, 0.85);
-            --bg-elevated: rgba(255, 255, 255, 0.04);
-            --border-glass: rgba(255, 255, 255, 0.08);
-            --accent-primary: #6c5ce7;
-            --accent-secondary: #a29bfe;
-            --accent-green: #00cec9;
-            --accent-red: #fd79a8;
-            --accent-orange: #fdcb6e;
-            --text-primary: #f0f0f8;
-            --text-secondary: #9d9db5;
-            --text-muted: #5e5e7a;
-            --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
-            --radius-lg: 20px;
-            --radius-md: 14px;
-            --radius-sm: 10px;
-            --nav-h: 68px;
-            --safe-b: env(safe-area-inset-bottom, 0px);
-            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+    #boot-screen,#auth-screen,#group-screen,#app-shell{position:relative;z-index:1;min-height:100vh}
+    #boot-screen{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;color:var(--text-2)}
+    .boot-spin{width:32px;height:32px;border:2px solid rgba(255,255,255,.1);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes fade-up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 
-        html, body { height: 100% }
-        body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--bg-main);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
+    .wrap{max-width:440px;margin:0 auto;padding:2.5rem 1.25rem 3rem;animation:fade-up .45s var(--ease)}
+    .brand{text-align:center;margin-bottom:2rem}
+    .brand-logo{width:56px;height:56px;border-radius:14px;margin:0 auto .9rem;display:block;box-shadow:var(--shadow)}
+    .brand-mark{font-family:var(--display);font-weight:700;font-size:1.55rem;letter-spacing:-.03em}
+    .brand p{color:var(--text-2);margin-top:.4rem;font-size:.92rem;line-height:1.45}
 
-        body::before, body::after {
-            content: '';
-            position: fixed;
-            border-radius: 50%;
-            filter: blur(120px);
-            opacity: 0.14;
-            z-index: 0;
-            pointer-events: none;
-        }
-        body::before {
-            width: 480px; height: 480px;
-            background: var(--accent-primary);
-            top: -140px; right: -100px;
-            animation: float-orb 16s ease-in-out infinite;
-        }
-        body::after {
-            width: 380px; height: 380px;
-            background: var(--accent-green);
-            bottom: -80px; left: -70px;
-            animation: float-orb 18s ease-in-out infinite reverse;
-        }
+    .card{
+      background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 40%), var(--bg-elevated);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:1.25rem;
+      margin-bottom:1rem;
+    }
+    .card h3{font-family:var(--display);font-size:1rem;font-weight:600;margin-bottom:.35rem}
+    .hint{color:var(--text-3);font-size:.82rem;line-height:1.45;margin-top:.55rem}
 
-        @keyframes float-orb {
-            0%, 100% { transform: translate(0, 0) scale(1) }
-            33% { transform: translate(24px, -32px) scale(1.08) }
-            66% { transform: translate(-16px, 18px) scale(0.94) }
-        }
-        @keyframes fade-in-up {
-            from { opacity: 0; transform: translateY(16px) }
-            to { opacity: 1; transform: translateY(0) }
-        }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0) }
-            20%, 60% { transform: translateX(-4px) }
-            40%, 80% { transform: translateX(4px) }
-        }
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1) }
-            50% { opacity: 0.5; transform: scale(0.85) }
-        }
+    .tabs{display:grid;grid-template-columns:1fr 1fr;gap:.35rem;background:var(--bg-soft);padding:.3rem;border-radius:12px;margin-bottom:1.1rem}
+    .tabs button{border:0;background:transparent;color:var(--text-2);padding:.7rem;border-radius:9px;font-weight:600;transition:.2s var(--ease)}
+    .tabs button.active{background:var(--teal-soft);color:var(--text)}
 
-        .hidden { display: none !important }
+    label.field{display:block;font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:0.85rem 0 .35rem}
+    label.field:first-of-type{margin-top:0}
+    input,select,textarea{
+      width:100%;padding:.8rem .95rem;background:rgba(255,255,255,.03);
+      border:1px solid var(--border);border-radius:var(--radius-sm);outline:none;transition:.2s var(--ease)
+    }
+    input:focus,select:focus,textarea:focus{border-color:rgba(61,154,139,.55);background:rgba(61,154,139,.06)}
+    input.shake{animation:shake .35s ease;border-color:var(--danger)}
 
-        #boot-screen, #auth-screen, #group-screen, #app-shell {
-            position: relative;
-            z-index: 1;
-            min-height: 100vh;
-        }
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:.4rem;
+      border:0;border-radius:var(--radius-sm);padding:.8rem 1.15rem;font-weight:600;
+      transition:.2s var(--ease);letter-spacing:.01em
+    }
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+    .btn-primary{background:var(--teal);color:#04110f;width:100%;margin-top:1rem}
+    .btn-primary:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px)}
+    .btn-gold{background:var(--gold);color:#1a1408;width:100%}
+    .btn-gold:hover:not(:disabled){filter:brightness(1.05);transform:translateY(-1px)}
+    .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-2)}
+    .btn-ghost:hover{border-color:var(--border-strong);color:var(--text)}
+    .btn-danger{background:var(--danger-soft);border:1px solid rgba(224,122,122,.28);color:var(--danger)}
+    .btn-sm{padding:.45rem .75rem;font-size:.78rem}
+    .form-error{color:var(--danger);font-size:.85rem;margin-top:.7rem;min-height:1.15em}
 
-        #boot-screen {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 1rem;
-            color: var(--text-secondary);
-        }
-        .boot-spin {
-            width: 36px; height: 36px;
-            border: 3px solid rgba(255,255,255,0.1);
-            border-top-color: var(--accent-green);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg) } }
+    /* App shell */
+    #app-shell{display:flex;flex-direction:column;min-height:100vh;padding-bottom:calc(var(--nav-h) + var(--safe-b) + .5rem)}
+    .topbar{
+      position:sticky;top:0;z-index:40;
+      backdrop-filter:blur(14px);background:rgba(11,15,20,.86);
+      border-bottom:1px solid var(--border);
+      padding:.85rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem
+    }
+    .topbar h1{font-family:var(--display);font-size:1.05rem;font-weight:700;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .status-row{display:flex;align-items:center;gap:.55rem;margin-top:.2rem;flex-wrap:wrap}
+    .pill{
+      display:inline-flex;align-items:center;gap:.35rem;
+      font-size:.68rem;font-weight:600;padding:.18rem .5rem;border-radius:999px;
+      border:1px solid var(--border);color:var(--text-2)
+    }
+    .pill.live{color:var(--teal);border-color:rgba(61,154,139,.35);background:var(--teal-soft)}
+    .pill.live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3px rgba(61,154,139,.2)}
+    .pill.offline{color:var(--gold);border-color:rgba(232,192,125,.35);background:var(--gold-soft)}
+    .pill.receiver{color:var(--gold);border-color:rgba(232,192,125,.4);background:var(--gold-soft)}
+    .topbar-actions{display:flex;gap:.4rem;flex-shrink:0}
 
-        .auth-wrap, .group-wrap {
-            max-width: 420px;
-            margin: 0 auto;
-            padding: 2.5rem 1.25rem 3rem;
-            animation: fade-in-up 0.5s ease-out;
-        }
-        .brand {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .brand-mark {
-            font-family: 'Syne', sans-serif;
-            font-size: 2rem;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary), var(--accent-green));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .brand p { color: var(--text-secondary); margin-top: 0.45rem; font-size: 0.95rem }
+    .page{max-width:900px;width:100%;margin:0 auto;padding:1.15rem 1rem 1.4rem;animation:fade-up .3s var(--ease)}
 
-        .card {
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-card);
-            padding: 1.5rem;
-            margin-bottom: 1.25rem;
-        }
+    .bottom-nav{
+      position:fixed;bottom:0;left:0;right:0;z-index:50;
+      height:calc(var(--nav-h) + var(--safe-b));padding:.4rem .45rem var(--safe-b);
+      background:rgba(12,16,22,.94);backdrop-filter:blur(16px);
+      border-top:1px solid var(--border);
+      display:grid;grid-template-columns:repeat(4,1fr);gap:.2rem
+    }
+    .bottom-nav button{
+      border:0;background:transparent;color:var(--text-3);font-size:.68rem;font-weight:600;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;
+      border-radius:12px;padding:.3rem;transition:.2s var(--ease)
+    }
+    .bottom-nav button svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .bottom-nav button.active{color:var(--teal);background:var(--teal-soft)}
 
-        .tabs-auth {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.4rem;
-            margin-bottom: 1.25rem;
-            background: var(--bg-elevated);
-            padding: 0.3rem;
-            border-radius: 12px;
-        }
-        .tabs-auth button {
-            border: none;
-            background: transparent;
-            color: var(--text-secondary);
-            padding: 0.7rem;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-            transition: var(--transition);
-        }
-        .tabs-auth button.active {
-            background: rgba(108, 92, 231, 0.35);
-            color: #fff;
-        }
+    .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.65rem;margin-bottom:1rem}
+    .summary-item{
+      background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;
+      padding:.95rem .65rem;text-align:center
+    }
+    .summary-label{font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);margin-bottom:.35rem}
+    .summary-value{font-family:var(--display);font-size:1.05rem;font-weight:700}
+    .summary-item.accent .summary-value{color:var(--gold)}
 
-        label.field {
-            display: block;
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.7px;
-            margin-bottom: 0.4rem;
-            margin-top: 0.85rem;
-        }
-        label.field:first-of-type { margin-top: 0 }
+    .form-row{display:flex;gap:.65rem;align-items:flex-end;flex-wrap:wrap}
+    .form-group{flex:1;min-width:130px}
+    .form-group label{display:block;font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);margin-bottom:.35rem}
 
-        input, select, textarea {
-            width: 100%;
-            padding: 0.85rem 1rem;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1.5px solid rgba(255, 255, 255, 0.08);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-family: inherit;
-            font-size: 0.95rem;
-            outline: none;
-            transition: var(--transition);
-        }
-        input:focus, select:focus, textarea:focus {
-            border-color: var(--accent-primary);
-            background: rgba(108, 92, 231, 0.06);
-        }
-        input.shake { animation: shake 0.4s ease-in-out; border-color: var(--accent-red) }
-        select option { background: #1a1a2e }
+    .table-wrapper{overflow-x:auto;border-radius:12px}
+    table{width:100%;border-collapse:collapse;min-width:400px}
+    thead th{padding:.75rem;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);text-align:left;border-bottom:1px solid var(--border)}
+    tbody td{padding:.8rem .75rem;font-size:.9rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+    tbody tr:hover{background:rgba(255,255,255,.02)}
+    .td-desc{font-weight:600}
+    .td-total{color:var(--gold);font-weight:700;font-variant-numeric:tabular-nums}
+    .td-meta{color:var(--text-3);font-size:.72rem;margin-top:.15rem}
+    .btn-remove{background:transparent;border:1px solid rgba(224,122,122,.25);color:var(--danger);padding:.3rem .65rem;border-radius:8px;font-size:.74rem;font-weight:600}
+    .btn-remove:hover{background:var(--danger-soft)}
+    .actions-bar{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.9rem;flex-wrap:wrap}
+    .empty{text-align:center;padding:1.75rem 1rem;color:var(--text-3);font-size:.9rem}
 
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4rem;
-            padding: 0.85rem 1.4rem;
-            border: none;
-            border-radius: var(--radius-sm);
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            transition: var(--transition);
-            font-size: 0.92rem;
-        }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important }
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent-primary), #7c6cf0);
-            color: #fff;
-            width: 100%;
-            margin-top: 1.1rem;
-        }
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(108, 92, 231, 0.4);
-        }
-        .btn-green {
-            background: linear-gradient(135deg, #00b894, #00cec9);
-            color: #fff;
-            width: 100%;
-        }
-        .btn-green:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 206, 201, 0.4);
-        }
-        .btn-ghost {
-            background: transparent;
-            border: 1.5px solid var(--border-glass);
-            color: var(--text-secondary);
-        }
-        .btn-ghost:hover { border-color: var(--accent-secondary); color: #fff }
-        .btn-danger {
-            background: transparent;
-            border: 1.5px solid rgba(253, 121, 168, 0.25);
-            color: var(--accent-red);
-        }
-        .btn-danger:hover { background: rgba(253, 121, 168, 0.1) }
-        .btn-sm { padding: 0.45rem 0.85rem; font-size: 0.78rem }
+    .receiver-banner{
+      display:none;margin-bottom:1rem;padding:.85rem 1rem;border-radius:12px;
+      border:1px solid rgba(232,192,125,.3);background:var(--gold-soft);color:var(--gold);
+      font-size:.88rem;line-height:1.4
+    }
+    .receiver-banner.show{display:block}
 
-        .form-error {
-            color: var(--accent-red);
-            font-size: 0.85rem;
-            margin-top: 0.75rem;
-            min-height: 1.2em;
-        }
-        .hint { color: var(--text-muted); font-size: 0.82rem; margin-top: 0.75rem; line-height: 1.4 }
+    .shop-add{display:flex;gap:.55rem;margin-bottom:.85rem}
+    .shop-add input{flex:1}
+    .shop-filters{display:flex;gap:.35rem;margin-bottom:.8rem;flex-wrap:wrap}
+    .chip{border:1px solid var(--border);background:transparent;color:var(--text-2);padding:.35rem .7rem;border-radius:999px;font-size:.74rem;font-weight:600}
+    .chip.active{background:var(--teal-soft);border-color:rgba(61,154,139,.4);color:var(--teal)}
+    .shop-list{display:flex;flex-direction:column;gap:.5rem}
+    .shop-item{
+      display:flex;align-items:center;gap:.7rem;padding:.8rem .9rem;
+      background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;animation:fade-up .25s var(--ease)
+    }
+    .shop-item.done{opacity:.55}
+    .shop-item.done .shop-text{text-decoration:line-through;color:var(--text-3)}
+    .shop-check{
+      width:24px;height:24px;border-radius:7px;border:2px solid rgba(61,154,139,.45);
+      background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+      color:transparent;font-size:.75rem;font-weight:800
+    }
+    .shop-item.done .shop-check{background:var(--teal);border-color:var(--teal);color:#04110f}
+    .shop-body{flex:1;min-width:0}
+    .shop-text{font-weight:600;word-break:break-word}
+    .shop-by{font-size:.7rem;color:var(--text-3);margin-top:.15rem}
 
-        /* App shell */
-        #app-shell {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            padding-bottom: calc(var(--nav-h) + var(--safe-b) + 0.5rem);
-        }
-        .topbar {
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            backdrop-filter: blur(16px);
-            background: rgba(15, 15, 26, 0.85);
-            border-bottom: 1px solid var(--border-glass);
-            padding: 0.85rem 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
-        }
-        .topbar-left { min-width: 0 }
-        .topbar h1 {
-            font-family: 'Syne', sans-serif;
-            font-size: 1.05rem;
-            font-weight: 800;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .live-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            font-size: 0.7rem;
-            color: var(--accent-green);
-            font-weight: 600;
-            margin-top: 0.15rem;
-        }
-        .live-badge::before {
-            content: '';
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            background: var(--accent-green);
-            animation: pulse-dot 1.6s ease-in-out infinite;
-        }
-        .topbar-actions { display: flex; gap: 0.4rem; flex-shrink: 0 }
+    .chat-page{display:flex;flex-direction:column;height:calc(100vh - var(--nav-h) - 72px - var(--safe-b));max-height:720px}
+    .chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.55rem;padding:.15rem 0 .85rem}
+    .msg{max-width:82%;padding:.65rem .85rem;border-radius:14px;animation:fade-up .2s var(--ease)}
+    .msg.mine{align-self:flex-end;background:rgba(61,154,139,.22);border:1px solid rgba(61,154,139,.28);border-bottom-right-radius:4px}
+    .msg.theirs{align-self:flex-start;background:var(--bg-soft);border:1px solid var(--border);border-bottom-left-radius:4px}
+    .msg-author{font-size:.68rem;font-weight:700;color:var(--teal);margin-bottom:.2rem}
+    .msg-text{font-size:.9rem;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+    .msg-time{font-size:.62rem;color:var(--text-3);margin-top:.3rem;text-align:right}
+    .chat-compose{display:flex;gap:.5rem;padding-top:.55rem;border-top:1px solid var(--border)}
+    .chat-compose input{flex:1}
+    .chat-compose .btn{width:auto;margin:0}
 
-        .page {
-            max-width: 900px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 1.25rem 1rem 1.5rem;
-            animation: fade-in-up 0.35s ease-out;
-        }
+    .invite-box{
+      background:rgba(61,154,139,.08);border:1px dashed rgba(61,154,139,.35);
+      border-radius:12px;padding:1rem;text-align:center;margin:.7rem 0 1rem
+    }
+    .invite-code{font-family:var(--display);font-size:1.7rem;font-weight:700;letter-spacing:.18em;color:var(--teal);margin:.35rem 0}
+    .members{display:flex;flex-direction:column;gap:.45rem;margin-top:.65rem}
+    .member{display:flex;align-items:center;gap:.65rem;padding:.65rem .75rem;background:var(--bg-soft);border:1px solid var(--border);border-radius:12px}
+    .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--teal),#2a6f65);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0}
+    .member-name{font-weight:600;font-size:.88rem}
+    .member-email{font-size:.7rem;color:var(--text-3)}
+    .member-tag{margin-left:auto;font-size:.65rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.04em}
 
-        .bottom-nav {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            z-index: 60;
-            height: calc(var(--nav-h) + var(--safe-b));
-            padding: 0.45rem 0.5rem var(--safe-b);
-            background: rgba(18, 18, 32, 0.92);
-            backdrop-filter: blur(18px);
-            border-top: 1px solid var(--border-glass);
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.25rem;
-        }
-        .bottom-nav button {
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            font-family: inherit;
-            font-size: 0.68rem;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 0.2rem;
-            border-radius: 12px;
-            transition: var(--transition);
-            padding: 0.35rem;
-        }
-        .bottom-nav button .ico { font-size: 1.25rem; line-height: 1 }
-        .bottom-nav button.active {
-            color: var(--accent-secondary);
-            background: rgba(108, 92, 231, 0.18);
-        }
+    .install-banner{
+      display:none;position:fixed;left:12px;right:12px;bottom:calc(var(--nav-h) + var(--safe-b) + 10px);
+      z-index:70;background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;
+      padding:.9rem 1rem;box-shadow:var(--shadow);align-items:center;gap:.85rem
+    }
+    .install-banner.show{display:flex}
+    .install-banner p{flex:1;font-size:.85rem;color:var(--text-2);line-height:1.35}
+    .install-banner strong{color:var(--text);display:block;margin-bottom:.15rem}
 
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.75rem;
-            margin-bottom: 1.25rem;
-        }
-        .summary-item {
-            background: var(--bg-card);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-md);
-            padding: 1rem 0.7rem;
-            text-align: center;
-        }
-        .summary-label {
-            font-size: 0.65rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 0.4rem;
-        }
-        .summary-value {
-            font-size: 1.15rem;
-            font-weight: 800;
-        }
-        .summary-item.highlight .summary-value { color: var(--accent-green) }
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(8px);z-index:1000;display:none;align-items:center;justify-content:center;padding:1rem}
+    .modal-overlay.active{display:flex}
+    .modal{
+      background:linear-gradient(160deg,#151c25,#10161d);border:1px solid var(--border);
+      border-radius:18px;padding:1.75rem 1.35rem;max-width:480px;width:100%;position:relative;
+      text-align:center;max-height:92vh;overflow-y:auto
+    }
+    .modal-close{position:absolute;top:.7rem;right:.7rem;background:transparent;border:0;color:var(--text-3);font-size:1.25rem;width:36px;height:36px;border-radius:50%}
+    .modal h2{font-family:var(--display);font-size:1.2rem;margin-bottom:1rem;color:var(--gold)}
+    .qr-container{background:#fff;border-radius:14px;padding:1rem;display:inline-block;margin-bottom:.9rem}
+    .qr-container img{display:block;width:200px;height:200px}
+    .textarea-group{
+      width:100%;padding:.75rem;background:rgba(255,255,255,.03);border:1px solid var(--border);
+      border-radius:10px;color:var(--text-2);font-size:.84rem;resize:none;margin-bottom:.75rem;
+      line-height:1.45;text-align:left;height:150px;white-space:pre-wrap
+    }
+    .modal-btns{display:flex;flex-direction:column;gap:.55rem}
+    .btn-copy{padding:.75rem 1.2rem;background:var(--teal);border:0;border-radius:10px;color:#04110f;font-weight:700;width:100%}
+    .btn-copy.copied{background:var(--gold);color:#1a1408}
+    .btn-copy.outline{background:transparent;border:1px solid rgba(61,154,139,.45);color:var(--teal)}
 
-        .form-row {
-            display: flex;
-            gap: 0.75rem;
-            align-items: flex-end;
-            flex-wrap: wrap;
-        }
-        .form-group { flex: 1; min-width: 140px }
-        .form-group label {
-            display: block;
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            margin-bottom: 0.4rem;
-        }
+    .toast{
+      position:fixed;bottom:calc(var(--nav-h) + var(--safe-b) + 14px);left:50%;
+      transform:translateX(-50%) translateY(16px);background:rgba(24,33,44,.96);
+      border:1px solid var(--border);color:#fff;padding:.65rem 1rem;border-radius:999px;
+      font-size:.84rem;font-weight:600;z-index:2000;opacity:0;pointer-events:none;transition:.28s var(--ease);white-space:nowrap
+    }
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-        .table-wrapper { overflow-x: auto; border-radius: var(--radius-md) }
-        table { width: 100%; border-collapse: collapse; min-width: 420px }
-        thead th {
-            padding: 0.85rem;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            text-align: left;
-            border-bottom: 1px solid var(--border-glass);
-        }
-        thead th.col-action { text-align: center }
-        tbody td {
-            padding: 0.85rem;
-            font-size: 0.9rem;
-            border-bottom: 1px solid rgba(255,255,255,0.03);
-            vertical-align: middle;
-        }
-        tbody tr:hover { background: var(--bg-card-hover) }
-        .td-desc { font-weight: 600 }
-        .td-total { color: var(--accent-green); font-weight: 700 }
-        .td-meta { color: var(--text-muted); font-size: 0.75rem; margin-top: 0.2rem }
-
-        .btn-remove {
-            background: none;
-            border: 1.5px solid rgba(253, 121, 168, 0.2);
-            color: var(--accent-red);
-            padding: 0.35rem 0.75rem;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 0.75rem;
-            font-family: inherit;
-        }
-        .btn-remove:hover { background: rgba(253, 121, 168, 0.1) }
-
-        .actions-bar {
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.6rem;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-        }
-        .empty {
-            text-align: center;
-            padding: 2rem 1rem;
-            color: var(--text-muted);
-        }
-
-        /* Shopping */
-        .shop-add {
-            display: flex;
-            gap: 0.6rem;
-            margin-bottom: 1rem;
-        }
-        .shop-add input { flex: 1 }
-        .shop-list { display: flex; flex-direction: column; gap: 0.55rem }
-        .shop-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.9rem 1rem;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-md);
-            transition: var(--transition);
-            animation: fade-in-up 0.3s ease-out;
-        }
-        .shop-item.done {
-            opacity: 0.55;
-        }
-        .shop-item.done .shop-text {
-            text-decoration: line-through;
-            color: var(--text-muted);
-        }
-        .shop-check {
-            width: 26px; height: 26px;
-            border-radius: 8px;
-            border: 2px solid rgba(0, 206, 201, 0.45);
-            background: transparent;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            color: transparent;
-            font-size: 0.85rem;
-            font-weight: 800;
-            transition: var(--transition);
-        }
-        .shop-item.done .shop-check {
-            background: var(--accent-green);
-            border-color: var(--accent-green);
-            color: #0f0f1a;
-        }
-        .shop-body { flex: 1; min-width: 0 }
-        .shop-text { font-weight: 600; word-break: break-word }
-        .shop-by { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem }
-        .shop-item .btn-remove { margin-left: auto }
-
-        .shop-filters {
-            display: flex;
-            gap: 0.4rem;
-            margin-bottom: 0.9rem;
-            flex-wrap: wrap;
-        }
-        .chip {
-            border: 1px solid var(--border-glass);
-            background: transparent;
-            color: var(--text-secondary);
-            padding: 0.4rem 0.8rem;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        .chip.active {
-            background: rgba(0, 206, 201, 0.15);
-            border-color: rgba(0, 206, 201, 0.45);
-            color: var(--accent-green);
-        }
-
-        /* Chat */
-        .chat-page {
-            display: flex;
-            flex-direction: column;
-            height: calc(100vh - var(--nav-h) - 70px - var(--safe-b));
-            max-height: 720px;
-        }
-        .chat-msgs {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 0.65rem;
-            padding: 0.25rem 0 1rem;
-        }
-        .msg {
-            max-width: 85%;
-            padding: 0.7rem 0.9rem;
-            border-radius: 14px;
-            animation: fade-in-up 0.25s ease-out;
-        }
-        .msg.mine {
-            align-self: flex-end;
-            background: linear-gradient(135deg, rgba(108, 92, 231, 0.45), rgba(108, 92, 231, 0.25));
-            border: 1px solid rgba(162, 155, 254, 0.25);
-            border-bottom-right-radius: 4px;
-        }
-        .msg.theirs {
-            align-self: flex-start;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border-glass);
-            border-bottom-left-radius: 4px;
-        }
-        .msg-author {
-            font-size: 0.7rem;
-            font-weight: 700;
-            color: var(--accent-secondary);
-            margin-bottom: 0.25rem;
-        }
-        .msg-text { font-size: 0.92rem; line-height: 1.4; white-space: pre-wrap; word-break: break-word }
-        .msg-time { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.35rem; text-align: right }
-        .chat-compose {
-            display: flex;
-            gap: 0.55rem;
-            padding-top: 0.5rem;
-            border-top: 1px solid var(--border-glass);
-        }
-        .chat-compose input { flex: 1 }
-        .chat-compose .btn { width: auto; margin: 0; padding: 0.85rem 1.1rem }
-
-        /* Settings */
-        .invite-box {
-            background: rgba(0, 206, 201, 0.08);
-            border: 1px dashed rgba(0, 206, 201, 0.35);
-            border-radius: var(--radius-md);
-            padding: 1rem;
-            text-align: center;
-            margin: 0.75rem 0 1rem;
-        }
-        .invite-code {
-            font-family: 'Syne', sans-serif;
-            font-size: 1.8rem;
-            font-weight: 800;
-            letter-spacing: 0.2em;
-            color: var(--accent-green);
-            margin: 0.4rem 0;
-        }
-        .members { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem }
-        .member {
-            display: flex;
-            align-items: center;
-            gap: 0.7rem;
-            padding: 0.7rem 0.85rem;
-            background: var(--bg-elevated);
-            border-radius: 12px;
-            border: 1px solid var(--border-glass);
-        }
-        .avatar {
-            width: 34px; height: 34px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-green));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 0.85rem;
-            flex-shrink: 0;
-        }
-        .member-name { font-weight: 600; font-size: 0.9rem }
-        .member-email { font-size: 0.72rem; color: var(--text-muted) }
-
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(8px);
-            z-index: 1000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-        }
-        .modal-overlay.active { display: flex }
-        .modal {
-            background: linear-gradient(145deg, #1a1a2e, #16162a);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: var(--radius-lg);
-            padding: 2rem 1.5rem;
-            max-width: 500px;
-            width: 100%;
-            position: relative;
-            text-align: center;
-            max-height: 92vh;
-            overflow-y: auto;
-        }
-        .modal-close {
-            position: absolute;
-            top: 0.75rem; right: 0.75rem;
-            background: none; border: none;
-            color: var(--text-muted);
-            font-size: 1.35rem;
-            cursor: pointer;
-            width: 36px; height: 36px;
-            border-radius: 50%;
-        }
-        .modal h2 { font-size: 1.25rem; margin-bottom: 1.1rem; color: var(--accent-green) }
-        .qr-container {
-            background: #fff;
-            border-radius: 16px;
-            padding: 1rem;
-            display: inline-block;
-            margin-bottom: 1rem;
-        }
-        .qr-container img { display: block; width: 200px; height: 200px }
-        .textarea-group {
-            width: 100%;
-            padding: 0.8rem;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: var(--radius-sm);
-            color: var(--text-secondary);
-            font-family: inherit;
-            font-size: 0.85rem;
-            resize: none;
-            outline: none;
-            margin-bottom: 0.85rem;
-            line-height: 1.5;
-            text-align: left;
-            height: 160px;
-            white-space: pre-wrap;
-        }
-        .modal-btns { display: flex; gap: 0.7rem; flex-direction: column }
-        .btn-copy {
-            padding: 0.8rem 1.5rem;
-            background: linear-gradient(135deg, var(--accent-primary), #7c6cf0);
-            border: none;
-            border-radius: var(--radius-sm);
-            color: #fff;
-            font-weight: 700;
-            cursor: pointer;
-            font-family: inherit;
-            width: 100%;
-        }
-        .btn-copy.copied { background: linear-gradient(135deg, #00b894, #00cec9) }
-        .btn-copy.outline {
-            background: transparent;
-            border: 1px solid var(--accent-primary);
-            color: var(--accent-secondary);
-        }
-
-        .toast {
-            position: fixed;
-            bottom: calc(var(--nav-h) + var(--safe-b) + 12px);
-            left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            background: rgba(30, 30, 50, 0.95);
-            border: 1px solid var(--border-glass);
-            color: #fff;
-            padding: 0.7rem 1.1rem;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: 0.3s ease;
-            white-space: nowrap;
-        }
-        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0) }
-
-        @media (max-width: 640px) {
-            .form-row { flex-direction: column; align-items: stretch }
-            .summary-grid { grid-template-columns: 1fr; }
-            .summary-value { font-size: 1.4rem }
-        }
-    </style>
+    @media(max-width:640px){
+      .form-row{flex-direction:column;align-items:stretch}
+      .summary-grid{grid-template-columns:1fr}
+      .summary-value{font-size:1.25rem}
+    }
+  </style>
 </head>
-
 <body>
-    <div id="boot-screen">
-        <div class="boot-spin"></div>
-        <div>Carregando GF Casa Share…</div>
-    </div>
+  <div id="boot-screen">
+    <div class="boot-spin"></div>
+    <div>Carregando Casa Share…</div>
+  </div>
 
-    <div id="auth-screen" class="hidden">
-        <div class="auth-wrap">
-            <div class="brand">
-                <div class="brand-mark">GF Casa Share</div>
-                <p>Despesas, compras e chat em tempo real</p>
-            </div>
-            <div class="card">
-                <div class="tabs-auth">
-                    <button type="button" class="active" id="tab-login" onclick="setAuthTab('login')">Entrar</button>
-                    <button type="button" id="tab-register" onclick="setAuthTab('register')">Criar conta</button>
-                </div>
-                <form id="auth-form" onsubmit="return handleAuth(event)">
-                    <div id="name-field" class="hidden">
-                        <label class="field" for="auth-name">Seu nome</label>
-                        <input id="auth-name" type="text" placeholder="Ex: Tiago" autocomplete="name">
-                    </div>
-                    <label class="field" for="auth-email">E-mail</label>
-                    <input id="auth-email" type="email" required placeholder="voce@email.com" autocomplete="email">
-                    <label class="field" for="auth-pass">Senha</label>
-                    <input id="auth-pass" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" autocomplete="current-password">
-                    <button class="btn btn-primary" type="submit" id="auth-submit">Entrar</button>
-                    <div class="form-error" id="auth-error"></div>
-                </form>
-            </div>
+  <div id="auth-screen" class="hidden">
+    <div class="wrap">
+      <div class="brand">
+        <img class="brand-logo" src="icons/icon-192.png" alt="GF Casa Share">
+        <div class="brand-mark">GF Casa Share</div>
+        <p>Despesas, compras e chat sincronizados para o grupo</p>
+      </div>
+      <div class="card">
+        <div class="tabs">
+          <button type="button" class="active" id="tab-login">Entrar</button>
+          <button type="button" id="tab-register">Criar conta</button>
         </div>
+        <form id="auth-form">
+          <div id="name-field" class="hidden">
+            <label class="field" for="auth-name">Seu nome</label>
+            <input id="auth-name" type="text" placeholder="Ex: Tiago" autocomplete="name">
+          </div>
+          <label class="field" for="auth-email">E-mail</label>
+          <input id="auth-email" type="email" required placeholder="voce@email.com" autocomplete="email">
+          <label class="field" for="auth-pass">Senha</label>
+          <input id="auth-pass" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" autocomplete="current-password">
+          <button class="btn btn-primary" type="submit" id="auth-submit">Entrar</button>
+          <div class="form-error" id="auth-error"></div>
+        </form>
+      </div>
     </div>
+  </div>
 
-    <div id="group-screen" class="hidden">
-        <div class="group-wrap">
-            <div class="brand">
-                <div class="brand-mark">Seu grupo</div>
-                <p>Crie um grupo novo ou entre com o código do convite</p>
-            </div>
-            <div class="card">
-                <label class="field" for="group-name">Nome do grupo</label>
-                <input id="group-name" type="text" placeholder="Ex: Casa / República">
-                <label class="field" for="group-people">Quantas pessoas?</label>
-                <input id="group-people" type="number" min="2" max="20" value="3">
-                <button class="btn btn-primary" type="button" onclick="criarGrupo()">Criar grupo</button>
-            </div>
-            <div class="card">
-                <label class="field" for="join-code">Código do convite</label>
-                <input id="join-code" type="text" placeholder="Ex: AB12CD" style="text-transform:uppercase; letter-spacing:0.12em; font-weight:700">
-                <button class="btn btn-green" type="button" onclick="entrarGrupo()">Entrar no grupo</button>
-                <div class="form-error" id="group-error"></div>
-                <p class="hint">Depois de entrar, tudo sincroniza ao vivo: despesas, lista e chat.</p>
-            </div>
-            <button class="btn btn-ghost" style="width:100%" type="button" onclick="fazerLogout()">Sair da conta</button>
+  <div id="group-screen" class="hidden">
+    <div class="wrap">
+      <div class="brand">
+        <div class="brand-mark">Seu grupo</div>
+        <p>Crie um espaço compartilhado ou entre com o código</p>
+      </div>
+      <div class="card">
+        <label class="field" for="group-name">Nome do grupo</label>
+        <input id="group-name" type="text" placeholder="Ex: Casa / República">
+        <label class="field" for="group-people">Pessoas no grupo (inclui você)</label>
+        <input id="group-people" type="number" min="2" max="20" value="3">
+        <p class="hint">Quem cria o grupo recebe o PIX e não entra no rateio. Os demais pagam.</p>
+        <button class="btn btn-primary" type="button" id="btn-criar-grupo">Criar grupo</button>
+      </div>
+      <div class="card">
+        <label class="field" for="join-code">Código do convite</label>
+        <input id="join-code" type="text" placeholder="Ex: AB12CD" style="text-transform:uppercase;letter-spacing:.12em;font-weight:700">
+        <button class="btn btn-gold" type="button" id="btn-entrar-grupo">Entrar no grupo</button>
+        <div class="form-error" id="group-error"></div>
+      </div>
+      <button class="btn btn-ghost" style="width:100%" type="button" id="btn-logout-group">Sair da conta</button>
+    </div>
+  </div>
+
+  <div id="app-shell" class="hidden">
+    <header class="topbar">
+      <div>
+        <h1 id="group-title">Grupo</h1>
+        <div class="status-row">
+          <span class="pill live" id="pill-live">Ao vivo</span>
+          <span class="pill offline hidden" id="pill-offline">Offline — fila ativa</span>
+          <span class="pill receiver hidden" id="pill-receiver">Você recebe</span>
         </div>
-    </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" type="button" id="btn-settings" title="Grupo">Grupo</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="btn-logout">Sair</button>
+      </div>
+    </header>
 
-    <div id="app-shell" class="hidden">
-        <header class="topbar">
-            <div class="topbar-left">
-                <h1 id="group-title">Grupo</h1>
-                <div class="live-badge">Ao vivo</div>
-            </div>
-            <div class="topbar-actions">
-                <button class="btn btn-ghost btn-sm" type="button" onclick="showPage('settings')" title="Configurações">⚙</button>
-                <button class="btn btn-ghost btn-sm" type="button" onclick="fazerLogout()">Sair</button>
-            </div>
-        </header>
-
-        <main>
-            <!-- DESPESAS -->
-            <section class="page" id="page-expenses">
-                <div class="summary-grid">
-                    <div class="summary-item">
-                        <div class="summary-label">Itens</div>
-                        <div class="summary-value" id="total-itens">0</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Total</div>
-                        <div class="summary-value" id="total-geral">R$ 0,00</div>
-                    </div>
-                    <div class="summary-item highlight">
-                        <div class="summary-label" id="label-por-pessoa">Por pessoa</div>
-                        <div class="summary-value" id="total-por-pessoa">R$ 0,00</div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="form-row">
-                        <div class="form-group" style="flex:2">
-                            <label for="input-descricao">Descrição</label>
-                            <input type="text" id="input-descricao" placeholder="Ex: Aluguel, Internet…">
-                        </div>
-                        <div class="form-group">
-                            <label for="input-valor">Valor (R$)</label>
-                            <input type="number" id="input-valor" placeholder="0,00" step="0.01" min="0">
-                        </div>
-                        <button class="btn btn-primary" style="width:auto; margin:0" type="button" onclick="adicionarGasto()">＋ Adicionar</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="table-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Despesa</th>
-                                    <th>Valor</th>
-                                    <th class="col-action">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody id="corpo-tabela"></tbody>
-                        </table>
-                    </div>
-                    <div id="empty-expenses" class="empty">Nenhuma despesa ainda. Adicione a primeira!</div>
-                    <button class="btn btn-green" style="margin-top:1rem" id="btn-gerar-pix" type="button" onclick="gerarResumoEPix()" disabled>
-                        Gerar resumo e PIX
-                    </button>
-                    <div class="actions-bar">
-                        <button class="btn btn-ghost btn-sm" type="button" onclick="apagarUltimo()" style="color:var(--accent-orange); border-color:rgba(253,203,110,0.3)">Desfazer último</button>
-                        <button class="btn btn-danger btn-sm" type="button" onclick="limparTudo()">Apagar todos</button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- COMPRAS -->
-            <section class="page hidden" id="page-shopping">
-                <div class="card">
-                    <div class="shop-add">
-                        <input type="text" id="shop-input" placeholder="Ex: Leite, pão, detergente…" onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarCompra()}">
-                        <button class="btn btn-primary" style="width:auto;margin:0" type="button" onclick="adicionarCompra()">Add</button>
-                    </div>
-                    <div class="shop-filters">
-                        <button type="button" class="chip active" data-filter="pending" onclick="setShopFilter('pending')">Pendentes</button>
-                        <button type="button" class="chip" data-filter="done" onclick="setShopFilter('done')">Comprados</button>
-                        <button type="button" class="chip" data-filter="all" onclick="setShopFilter('all')">Todos</button>
-                    </div>
-                    <div class="shop-list" id="shop-list"></div>
-                    <div id="empty-shop" class="empty">Lista vazia — toque em Add para começar.</div>
-                </div>
-            </section>
-
-            <!-- CHAT -->
-            <section class="page hidden" id="page-chat">
-                <div class="card chat-page">
-                    <div class="chat-msgs" id="chat-msgs"></div>
-                    <div class="chat-compose">
-                        <input type="text" id="chat-input" placeholder="Escreva uma mensagem…" maxlength="1000" onkeydown="if(event.key==='Enter'){event.preventDefault();enviarMsg()}">
-                        <button class="btn btn-primary" type="button" onclick="enviarMsg()">Enviar</button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SETTINGS -->
-            <section class="page hidden" id="page-settings">
-                <div class="card">
-                    <h3 style="margin-bottom:0.5rem">Convide o grupo</h3>
-                    <p class="hint" style="margin-top:0">Compartilhe o código para outras pessoas entrarem e verem tudo ao vivo.</p>
-                    <div class="invite-box">
-                        <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Código</div>
-                        <div class="invite-code" id="invite-code-display">------</div>
-                        <button class="btn btn-green btn-sm" type="button" onclick="copiarConvite()">Copiar código</button>
-                    </div>
-                    <h3 style="margin:1rem 0 0.4rem">Membros</h3>
-                    <div class="members" id="members-list"></div>
-                </div>
-
-                <div class="card">
-                    <h3 style="margin-bottom:0.75rem">Configurações do grupo</h3>
-                    <label class="field" for="cfg-people">Pessoas no rateio</label>
-                    <input id="cfg-people" type="number" min="2" max="20">
-                    <label class="field" for="cfg-pix-key">Chave PIX</label>
-                    <input id="cfg-pix-key" type="text" placeholder="Telefone, e-mail ou chave aleatória">
-                    <label class="field" for="cfg-pix-name">Nome do recebedor</label>
-                    <input id="cfg-pix-name" type="text" placeholder="Nome no PIX" maxlength="25">
-                    <label class="field" for="cfg-pix-city">Cidade</label>
-                    <input id="cfg-pix-city" type="text" placeholder="Cidade" maxlength="15">
-                    <button class="btn btn-primary" type="button" onclick="salvarConfigGrupo()">Salvar configurações</button>
-                    <div class="form-error" id="cfg-error"></div>
-                </div>
-
-                <div class="card">
-                    <h3 style="margin-bottom:0.5rem">Conta</h3>
-                    <p class="hint" id="account-info" style="margin-top:0"></p>
-                    <button class="btn btn-danger" style="width:100%;margin-top:0.75rem" type="button" onclick="sairDoGrupo()">Sair deste grupo</button>
-                </div>
-            </section>
-        </main>
-
-        <nav class="bottom-nav">
-            <button type="button" class="active" data-page="expenses" onclick="showPage('expenses')"><span class="ico">💸</span>Despesas</button>
-            <button type="button" data-page="shopping" onclick="showPage('shopping')"><span class="ico">🛒</span>Compras</button>
-            <button type="button" data-page="chat" onclick="showPage('chat')"><span class="ico">💬</span>Chat</button>
-            <button type="button" data-page="settings" onclick="showPage('settings')"><span class="ico">⚙</span>Grupo</button>
-        </nav>
-    </div>
-
-    <div class="modal-overlay" id="pix-modal">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pix-modal-title">
-            <button class="modal-close" type="button" onclick="fecharModal()" aria-label="Fechar">✕</button>
-            <h2 id="pix-modal-title">Resumo e PIX</h2>
-            <div class="qr-container" id="qr-wrap"><img id="qr-img" alt="QR Code PIX"></div>
-            <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.4rem;text-align:left">Pix Copia e Cola</p>
-            <textarea class="textarea-group" id="pix-code-display" readonly style="height:60px"></textarea>
-            <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.4rem;text-align:left">Texto para WhatsApp</p>
-            <textarea class="textarea-group" id="texto-grupo" readonly></textarea>
-            <div class="modal-btns">
-                <button class="btn-copy" id="btn-copy-text" type="button" onclick="copiarTextoGrupo()">Copiar texto p/ WhatsApp</button>
-                <button class="btn-copy outline" id="btn-copy-pix" type="button" onclick="copiarPixCopieCola()">Copiar Pix Copia e Cola</button>
-            </div>
+    <main>
+      <section class="page" id="page-expenses">
+        <div class="receiver-banner" id="receiver-banner">
+          Você é o criador do grupo: recebe o PIX e <strong>não paga</strong> o rateio. O valor é dividido só entre os demais membros.
         </div>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <div class="summary-label">Itens</div>
+            <div class="summary-value" id="total-itens">0</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Total</div>
+            <div class="summary-value" id="total-geral">R$ 0,00</div>
+          </div>
+          <div class="summary-item accent">
+            <div class="summary-label" id="label-por-pessoa">Por pagante</div>
+            <div class="summary-value" id="total-por-pessoa">R$ 0,00</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="form-row">
+            <div class="form-group" style="flex:2">
+              <label for="input-descricao">Descrição</label>
+              <input type="text" id="input-descricao" placeholder="Ex: Aluguel, Internet…">
+            </div>
+            <div class="form-group">
+              <label for="input-valor">Valor (R$)</label>
+              <input type="number" id="input-valor" placeholder="0,00" step="0.01" min="0">
+            </div>
+            <button class="btn btn-primary" style="width:auto;margin:0" type="button" id="btn-add-expense">Adicionar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Despesa</th>
+                  <th>Valor</th>
+                  <th style="text-align:center">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="corpo-tabela"></tbody>
+            </table>
+          </div>
+          <div id="empty-expenses" class="empty">Nenhuma despesa ainda.</div>
+          <button class="btn btn-gold" style="margin-top:1rem" id="btn-gerar-pix" type="button" disabled>Gerar resumo e PIX</button>
+          <div class="actions-bar">
+            <button class="btn btn-ghost btn-sm" type="button" id="btn-undo">Desfazer último</button>
+            <button class="btn btn-danger btn-sm" type="button" id="btn-clear">Apagar todos</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="page hidden" id="page-shopping">
+        <div class="card">
+          <div class="shop-add">
+            <input type="text" id="shop-input" placeholder="Ex: Leite, pão, detergente…">
+            <button class="btn btn-primary" style="width:auto;margin:0" type="button" id="btn-add-shop">Add</button>
+          </div>
+          <div class="shop-filters">
+            <button type="button" class="chip active" data-filter="pending">Pendentes</button>
+            <button type="button" class="chip" data-filter="done">Comprados</button>
+            <button type="button" class="chip" data-filter="all">Todos</button>
+          </div>
+          <div class="shop-list" id="shop-list"></div>
+          <div id="empty-shop" class="empty">Lista vazia — adicione o primeiro item.</div>
+        </div>
+      </section>
+
+      <section class="page hidden" id="page-chat">
+        <div class="card chat-page">
+          <div class="chat-msgs" id="chat-msgs"></div>
+          <div class="chat-compose">
+            <input type="text" id="chat-input" placeholder="Escreva uma mensagem…" maxlength="1000">
+            <button class="btn btn-primary" type="button" id="btn-send-msg">Enviar</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="page hidden" id="page-settings">
+        <div class="card">
+          <h3>Convide o grupo</h3>
+          <p class="hint" style="margin-top:0">Quem entrar com o código paga o rateio. Você (criador) recebe.</p>
+          <div class="invite-box">
+            <div style="font-size:.72rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em">Código</div>
+            <div class="invite-code" id="invite-code-display">------</div>
+            <button class="btn btn-primary btn-sm" style="width:auto;margin:0" type="button" id="btn-copy-invite">Copiar código</button>
+          </div>
+          <h3 style="margin-top:.4rem">Membros</h3>
+          <div class="members" id="members-list"></div>
+        </div>
+        <div class="card">
+          <h3>PIX do recebedor</h3>
+          <p class="hint" style="margin-top:0">Configure a chave de quem criou o grupo (recebe os pagamentos).</p>
+          <label class="field" for="cfg-pix-key">Chave PIX</label>
+          <input id="cfg-pix-key" type="text" placeholder="Telefone, e-mail ou chave">
+          <label class="field" for="cfg-pix-name">Nome do recebedor</label>
+          <input id="cfg-pix-name" type="text" placeholder="Nome no PIX" maxlength="25">
+          <label class="field" for="cfg-pix-city">Cidade</label>
+          <input id="cfg-pix-city" type="text" placeholder="Cidade" maxlength="15">
+          <button class="btn btn-primary" type="button" id="btn-save-cfg">Salvar</button>
+          <div class="form-error" id="cfg-error"></div>
+        </div>
+        <div class="card">
+          <h3>Notificações</h3>
+          <p class="hint" style="margin-top:0">Receba alertas de chat, despesas e compras neste aparelho.</p>
+          <button class="btn btn-ghost" style="width:100%;margin-top:.6rem" type="button" id="btn-enable-notifs">Ativar notificações</button>
+          <div class="hint" id="notif-status"></div>
+        </div>
+        <div class="card">
+          <h3>Conta</h3>
+          <p class="hint" id="account-info" style="margin-top:0"></p>
+          <button class="btn btn-danger" style="width:100%;margin-top:.7rem" type="button" id="btn-leave-group">Sair deste grupo</button>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button type="button" class="active" data-page="expenses">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+        Despesas
+      </button>
+      <button type="button" data-page="shopping">
+        <svg viewBox="0 0 24 24"><path d="M6 7h15l-1.5 9h-12z"/><path d="M6 7 5 3H2"/><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>
+        Compras
+      </button>
+      <button type="button" data-page="chat">
+        <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 1 1 18 0z"/></svg>
+        Chat
+      </button>
+      <button type="button" data-page="settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        Grupo
+      </button>
+    </nav>
+  </div>
+
+  <div class="install-banner" id="install-banner">
+    <p><strong>Instalar no celular</strong>Adicione à tela inicial para abrir como app.</p>
+    <button class="btn btn-primary btn-sm" style="width:auto;margin:0" type="button" id="btn-install">Instalar</button>
+    <button class="btn btn-ghost btn-sm" type="button" id="btn-install-dismiss">Agora não</button>
+  </div>
+
+  <div class="modal-overlay" id="pix-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pix-modal-title">
+      <button class="modal-close" type="button" id="btn-close-modal" aria-label="Fechar">×</button>
+      <h2 id="pix-modal-title">Resumo e PIX</h2>
+      <p class="hint" id="pix-modal-hint" style="margin:-.4rem 0 1rem;text-align:center"></p>
+      <div class="qr-container" id="qr-wrap"><img id="qr-img" alt="QR Code PIX"></div>
+      <p style="font-size:.78rem;color:var(--text-3);margin-bottom:.35rem;text-align:left">Pix Copia e Cola</p>
+      <textarea class="textarea-group" id="pix-code-display" readonly style="height:58px"></textarea>
+      <p style="font-size:.78rem;color:var(--text-3);margin-bottom:.35rem;text-align:left">Texto para WhatsApp</p>
+      <textarea class="textarea-group" id="texto-grupo" readonly></textarea>
+      <div class="modal-btns">
+        <button class="btn-copy" id="btn-copy-text" type="button">Copiar texto WhatsApp</button>
+        <button class="btn-copy outline" id="btn-copy-pix" type="button">Copiar Pix Copia e Cola</button>
+      </div>
     </div>
+  </div>
 
-    <div class="toast" id="toast"></div>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyCAlPFtxbhhsf1ZEpazvjGuYgrJN0_6aso",
-            authDomain: "gf-casa-share.firebaseapp.com",
-            projectId: "gf-casa-share",
-            storageBucket: "gf-casa-share.firebasestorage.app",
-            messagingSenderId: "672847820302",
-            appId: "1:672847820302:web:b1890e09213a8b95c66e5f"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        let currentUser = null;
-        let userProfile = null;
-        let currentGroup = null;
-        let groupId = null;
-        let authMode = 'login';
-        let shopFilter = 'pending';
-        let pixPayloadAtual = '';
-
-        let unsubExpenses = null;
-        let unsubShopping = null;
-        let unsubMessages = null;
-        let unsubGroup = null;
-
-        let expenses = [];
-        let shopping = [];
-        let messages = [];
-
-        function $(id) { return document.getElementById(id) }
-        function escapeHTML(s) {
-            const d = document.createElement('div');
-            d.textContent = s == null ? '' : String(s);
-            return d.innerHTML;
-        }
-        function fmt(v) { return Number(v || 0).toFixed(2).replace('.', ',') }
-        function toast(msg) {
-            const t = $('toast');
-            t.textContent = msg;
-            t.classList.add('show');
-            clearTimeout(toast._t);
-            toast._t = setTimeout(() => t.classList.remove('show'), 2200);
-        }
-        function showScreen(name) {
-            ['boot-screen', 'auth-screen', 'group-screen', 'app-shell'].forEach(id => {
-                $(id).classList.toggle('hidden', id !== name);
-            });
-        }
-        function authErrorMsg(err) {
-            const code = (err && err.code) || '';
-            const map = {
-                'auth/email-already-in-use': 'Este e-mail já está em uso.',
-                'auth/invalid-email': 'E-mail inválido.',
-                'auth/weak-password': 'Senha fraca (mín. 6 caracteres).',
-                'auth/user-not-found': 'Conta não encontrada.',
-                'auth/wrong-password': 'Senha incorreta.',
-                'auth/invalid-credential': 'E-mail ou senha inválidos.',
-                'auth/too-many-requests': 'Muitas tentativas. Aguarde um pouco.',
-                'auth/configuration-not-found': 'Auth ainda não foi ativado no Firebase Console. Abra Authentication → Começar → E-mail/senha.',
-                'auth/operation-not-allowed': 'Login por e-mail ainda não está habilitado no Firebase Console.',
-            };
-            return map[code] || (err && err.message) || 'Erro inesperado.';
-        }
-        function makeInviteCode() {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-            let out = '';
-            for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
-            return out;
-        }
-        function initials(name) {
-            return String(name || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0] || '').join('').toUpperCase() || '?';
-        }
-
-        function setAuthTab(mode) {
-            authMode = mode;
-            $('tab-login').classList.toggle('active', mode === 'login');
-            $('tab-register').classList.toggle('active', mode === 'register');
-            $('name-field').classList.toggle('hidden', mode !== 'register');
-            $('auth-submit').textContent = mode === 'login' ? 'Entrar' : 'Criar conta';
-            $('auth-pass').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
-            $('auth-error').textContent = '';
-        }
-
-        async function handleAuth(e) {
-            e.preventDefault();
-            const email = $('auth-email').value.trim();
-            const pass = $('auth-pass').value;
-            const name = $('auth-name').value.trim();
-            $('auth-error').textContent = '';
-            $('auth-submit').disabled = true;
-            try {
-                if (authMode === 'register') {
-                    if (!name) {
-                        $('auth-name').classList.add('shake');
-                        setTimeout(() => $('auth-name').classList.remove('shake'), 400);
-                        throw { message: 'Informe seu nome.' };
-                    }
-                    const cred = await auth.createUserWithEmailAndPassword(email, pass);
-                    await cred.user.updateProfile({ displayName: name });
-                    await db.collection('users').doc(cred.user.uid).set({
-                        name,
-                        email,
-                        groupId: null,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-                } else {
-                    await auth.signInWithEmailAndPassword(email, pass);
-                }
-            } catch (err) {
-                $('auth-error').textContent = authErrorMsg(err);
-            } finally {
-                $('auth-submit').disabled = false;
-            }
-            return false;
-        }
-
-        async function ensureUserDoc(user) {
-            const ref = db.collection('users').doc(user.uid);
-            const snap = await ref.get();
-            if (!snap.exists) {
-                const profile = {
-                    name: user.displayName || (user.email || '').split('@')[0] || 'Usuário',
-                    email: user.email || '',
-                    groupId: null,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                await ref.set(profile);
-                return profile;
-            }
-            return snap.data();
-        }
-
-        function clearListeners() {
-            [unsubExpenses, unsubShopping, unsubMessages, unsubGroup].forEach(fn => { if (fn) fn() });
-            unsubExpenses = unsubShopping = unsubMessages = unsubGroup = null;
-        }
-
-        auth.onAuthStateChanged(async (user) => {
-            clearListeners();
-            currentUser = user;
-            currentGroup = null;
-            groupId = null;
-            if (!user) {
-                showScreen('auth-screen');
-                return;
-            }
-            try {
-                userProfile = await ensureUserDoc(user);
-                groupId = userProfile.groupId || null;
-                if (!groupId) {
-                    showScreen('group-screen');
-                    return;
-                }
-                await entrarNoApp(groupId);
-            } catch (err) {
-                console.error(err);
-                showScreen('auth-screen');
-                $('auth-error').textContent = authErrorMsg(err);
-            }
-        });
-
-        async function criarGrupo() {
-            $('group-error').textContent = '';
-            const name = $('group-name').value.trim();
-            const people = Math.max(2, Math.min(20, parseInt($('group-people').value, 10) || 3));
-            if (!name) {
-                $('group-name').classList.add('shake');
-                setTimeout(() => $('group-name').classList.remove('shake'), 400);
-                return;
-            }
-            try {
-                const inviteCode = makeInviteCode();
-                const member = {
-                    uid: currentUser.uid,
-                    name: userProfile.name || currentUser.displayName || 'Usuário',
-                    email: currentUser.email || ''
-                };
-                const groupRef = db.collection('groups').doc();
-                await groupRef.set({
-                    name,
-                    inviteCode,
-                    memberIds: [currentUser.uid],
-                    members: [member],
-                    personCount: people,
-                    pix: { chave: '', nome: '', cidade: '' },
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    createdBy: currentUser.uid
-                });
-                await db.collection('invites').doc(inviteCode).set({
-                    groupId: groupRef.id,
-                    groupName: name,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                await db.collection('users').doc(currentUser.uid).set({ groupId: groupRef.id }, { merge: true });
-                userProfile.groupId = groupRef.id;
-                await entrarNoApp(groupRef.id);
-                toast('Grupo criado!');
-            } catch (err) {
-                console.error(err);
-                $('group-error').textContent = err.message || 'Não foi possível criar o grupo.';
-            }
-        }
-
-        async function entrarGrupo() {
-            $('group-error').textContent = '';
-            const code = $('join-code').value.trim().toUpperCase();
-            if (code.length < 4) {
-                $('join-code').classList.add('shake');
-                setTimeout(() => $('join-code').classList.remove('shake'), 400);
-                return;
-            }
-            try {
-                const inv = await db.collection('invites').doc(code).get();
-                if (!inv.exists) throw new Error('Código inválido.');
-                const { groupId: gid, groupName } = inv.data();
-                const gRef = db.collection('groups').doc(gid);
-                await db.runTransaction(async (tx) => {
-                    const gSnap = await tx.get(gRef);
-                    if (!gSnap.exists) throw new Error('Grupo não encontrado.');
-                    const data = gSnap.data();
-                    if ((data.memberIds || []).includes(currentUser.uid)) return;
-                    const member = {
-                        uid: currentUser.uid,
-                        name: userProfile.name || currentUser.displayName || 'Usuário',
-                        email: currentUser.email || ''
-                    };
-                    tx.update(gRef, {
-                        memberIds: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
-                        members: firebase.firestore.FieldValue.arrayUnion(member)
-                    });
-                });
-                await db.collection('users').doc(currentUser.uid).set({ groupId: gid }, { merge: true });
-                userProfile.groupId = gid;
-                await entrarNoApp(gid);
-                toast('Entrou em ' + (groupName || 'grupo') + '!');
-            } catch (err) {
-                console.error(err);
-                $('group-error').textContent = err.message || 'Não foi possível entrar.';
-            }
-        }
-
-        async function entrarNoApp(gid) {
-            groupId = gid;
-            showScreen('app-shell');
-            showPage('expenses');
-
-            unsubGroup = db.collection('groups').doc(gid).onSnapshot((snap) => {
-                if (!snap.exists) {
-                    currentGroup = null;
-                    showScreen('group-screen');
-                    return;
-                }
-                currentGroup = { id: snap.id, ...snap.data() };
-                renderGroupMeta();
-            }, (err) => console.error('group listen', err));
-
-            unsubExpenses = db.collection('groups').doc(gid).collection('expenses')
-                .orderBy('createdAt', 'desc')
-                .onSnapshot((snap) => {
-                    expenses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    renderExpenses();
-                }, (err) => console.error('expenses listen', err));
-
-            unsubShopping = db.collection('groups').doc(gid).collection('shopping')
-                .orderBy('createdAt', 'desc')
-                .onSnapshot((snap) => {
-                    shopping = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    renderShopping();
-                }, (err) => console.error('shopping listen', err));
-
-            unsubMessages = db.collection('groups').doc(gid).collection('messages')
-                .orderBy('createdAt', 'asc')
-                .limitToLast(100)
-                .onSnapshot((snap) => {
-                    messages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    renderChat();
-                }, (err) => console.error('chat listen', err));
-        }
-
-        function renderGroupMeta() {
-            if (!currentGroup) return;
-            $('group-title').textContent = currentGroup.name || 'Grupo';
-            $('invite-code-display').textContent = currentGroup.inviteCode || '------';
-            $('label-por-pessoa').textContent = 'Por pessoa (÷' + (currentGroup.personCount || 3) + ')';
-            $('cfg-people').value = currentGroup.personCount || 3;
-            $('cfg-pix-key').value = (currentGroup.pix && currentGroup.pix.chave) || '';
-            $('cfg-pix-name').value = (currentGroup.pix && currentGroup.pix.nome) || '';
-            $('cfg-pix-city').value = (currentGroup.pix && currentGroup.pix.cidade) || '';
-            $('account-info').textContent = (userProfile && userProfile.name ? userProfile.name + ' · ' : '') + (currentUser.email || '');
-
-            const list = $('members-list');
-            list.innerHTML = '';
-            (currentGroup.members || []).forEach(m => {
-                const el = document.createElement('div');
-                el.className = 'member';
-                el.innerHTML = `<div class="avatar">${escapeHTML(initials(m.name))}</div>
-                    <div><div class="member-name">${escapeHTML(m.name || 'Membro')}</div>
-                    <div class="member-email">${escapeHTML(m.email || '')}</div></div>`;
-                list.appendChild(el);
-            });
-            renderExpenses();
-        }
-
-        function showPage(page) {
-            ['expenses', 'shopping', 'chat', 'settings'].forEach(p => {
-                $('page-' + p).classList.toggle('hidden', p !== page);
-            });
-            document.querySelectorAll('.bottom-nav button').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.page === page);
-            });
-            if (page === 'chat') {
-                const box = $('chat-msgs');
-                requestAnimationFrame(() => { box.scrollTop = box.scrollHeight });
-            }
-        }
-
-        function personCount() {
-            return Math.max(2, Number((currentGroup && currentGroup.personCount) || 3));
-        }
-
-        function renderExpenses() {
-            const tb = $('corpo-tabela');
-            const es = $('empty-expenses');
-            tb.innerHTML = '';
-            let soma = 0;
-            if (!expenses.length) {
-                es.style.display = 'block';
-                $('btn-gerar-pix').disabled = true;
-            } else {
-                es.style.display = 'none';
-                $('btn-gerar-pix').disabled = false;
-                expenses.forEach((g) => {
-                    soma += Number(g.valor) || 0;
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><div class="td-desc">${escapeHTML(g.descricao)}</div>
-                            <div class="td-meta">${escapeHTML(g.createdByName || '')}</div></td>
-                        <td class="td-total">R$ ${fmt(g.valor)}</td>
-                        <td style="text-align:center"><button class="btn-remove" type="button" data-id="${escapeHTML(g.id)}">Remover</button></td>`;
-                    tr.querySelector('.btn-remove').onclick = () => removerGasto(g.id);
-                    tb.appendChild(tr);
-                });
-            }
-            const n = personCount();
-            $('total-geral').textContent = `R$ ${fmt(soma)}`;
-            $('total-por-pessoa').textContent = `R$ ${fmt(soma / n)}`;
-            $('total-itens').textContent = expenses.length;
-            $('label-por-pessoa').textContent = 'Por pessoa (÷' + n + ')';
-        }
-
-        async function adicionarGasto() {
-            const iD = $('input-descricao');
-            const iV = $('input-valor');
-            const d = iD.value.trim();
-            const v = parseFloat(iV.value);
-            let ok = true;
-            if (!d) { iD.classList.add('shake'); setTimeout(() => iD.classList.remove('shake'), 400); ok = false }
-            if (isNaN(v) || v <= 0) { iV.classList.add('shake'); setTimeout(() => iV.classList.remove('shake'), 400); ok = false }
-            if (!ok || !groupId) return;
-            await db.collection('groups').doc(groupId).collection('expenses').add({
-                descricao: d,
-                valor: v,
-                createdBy: currentUser.uid,
-                createdByName: userProfile.name || currentUser.displayName || 'Alguém',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            iD.value = ''; iV.value = ''; iD.focus();
-            toast('Despesa adicionada');
-        }
-
-        async function removerGasto(id) {
-            if (!groupId || !id) return;
-            await db.collection('groups').doc(groupId).collection('expenses').doc(id).delete();
-        }
-
-        async function apagarUltimo() {
-            if (!expenses.length) return;
-            await removerGasto(expenses[0].id);
-        }
-
-        async function limparTudo() {
-            if (!expenses.length) return;
-            if (!confirm('Apagar todas as despesas do grupo?')) return;
-            const batch = db.batch();
-            expenses.forEach(g => {
-                batch.delete(db.collection('groups').doc(groupId).collection('expenses').doc(g.id));
-            });
-            await batch.commit();
-            toast('Despesas apagadas');
-        }
-
-        function setShopFilter(f) {
-            shopFilter = f;
-            document.querySelectorAll('.shop-filters .chip').forEach(c => {
-                c.classList.toggle('active', c.dataset.filter === f);
-            });
-            renderShopping();
-        }
-
-        function renderShopping() {
-            const list = $('shop-list');
-            const empty = $('empty-shop');
-            list.innerHTML = '';
-            const filtered = shopping.filter(item => {
-                if (shopFilter === 'pending') return !item.done;
-                if (shopFilter === 'done') return !!item.done;
-                return true;
-            });
-            empty.style.display = filtered.length ? 'none' : 'block';
-            filtered.forEach(item => {
-                const el = document.createElement('div');
-                el.className = 'shop-item' + (item.done ? ' done' : '');
-                el.innerHTML = `
-                    <button class="shop-check" type="button" aria-label="Marcar">${item.done ? '✓' : ''}</button>
-                    <div class="shop-body">
-                        <div class="shop-text">${escapeHTML(item.text)}</div>
-                        <div class="shop-by">${item.done
-                            ? 'Comprado' + (item.doneByName ? ' por ' + escapeHTML(item.doneByName) : '')
-                            : 'Por ' + escapeHTML(item.createdByName || 'alguém')}</div>
-                    </div>
-                    <button class="btn-remove" type="button">Remover</button>`;
-                el.querySelector('.shop-check').onclick = () => toggleCompra(item);
-                el.querySelector('.btn-remove').onclick = () => removerCompra(item.id);
-                list.appendChild(el);
-            });
-        }
-
-        async function adicionarCompra() {
-            const input = $('shop-input');
-            const text = input.value.trim();
-            if (!text || !groupId) {
-                input.classList.add('shake');
-                setTimeout(() => input.classList.remove('shake'), 400);
-                return;
-            }
-            await db.collection('groups').doc(groupId).collection('shopping').add({
-                text,
-                done: false,
-                createdBy: currentUser.uid,
-                createdByName: userProfile.name || currentUser.displayName || 'Alguém',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                doneBy: null,
-                doneByName: null
-            });
-            input.value = '';
-            input.focus();
-            if (shopFilter === 'done') setShopFilter('pending');
-        }
-
-        async function toggleCompra(item) {
-            await db.collection('groups').doc(groupId).collection('shopping').doc(item.id).update({
-                done: !item.done,
-                doneBy: !item.done ? currentUser.uid : null,
-                doneByName: !item.done ? (userProfile.name || currentUser.displayName || 'Alguém') : null,
-                doneAt: !item.done ? firebase.firestore.FieldValue.serverTimestamp() : null
-            });
-        }
-
-        async function removerCompra(id) {
-            await db.collection('groups').doc(groupId).collection('shopping').doc(id).delete();
-        }
-
-        function renderChat() {
-            const box = $('chat-msgs');
-            const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-            box.innerHTML = '';
-            if (!messages.length) {
-                box.innerHTML = '<div class="empty">Nenhuma mensagem ainda. Digam oi 👋</div>';
-                return;
-            }
-            messages.forEach(m => {
-                const mine = m.uid === currentUser.uid;
-                const el = document.createElement('div');
-                el.className = 'msg ' + (mine ? 'mine' : 'theirs');
-                const ts = m.createdAt && m.createdAt.toDate ? m.createdAt.toDate() : null;
-                const time = ts ? ts.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
-                el.innerHTML = `${mine ? '' : `<div class="msg-author">${escapeHTML(m.name || 'Alguém')}</div>`}
-                    <div class="msg-text">${escapeHTML(m.text)}</div>
-                    <div class="msg-time">${time}</div>`;
-                box.appendChild(el);
-            });
-            if (nearBottom) box.scrollTop = box.scrollHeight;
-        }
-
-        async function enviarMsg() {
-            const input = $('chat-input');
-            const text = input.value.trim();
-            if (!text || !groupId) return;
-            input.value = '';
-            await db.collection('groups').doc(groupId).collection('messages').add({
-                text,
-                uid: currentUser.uid,
-                name: userProfile.name || currentUser.displayName || 'Alguém',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        }
-
-        async function salvarConfigGrupo() {
-            $('cfg-error').textContent = '';
-            if (!groupId) return;
-            const people = Math.max(2, Math.min(20, parseInt($('cfg-people').value, 10) || 3));
-            try {
-                await db.collection('groups').doc(groupId).update({
-                    personCount: people,
-                    pix: {
-                        chave: $('cfg-pix-key').value.trim(),
-                        nome: $('cfg-pix-name').value.trim(),
-                        cidade: $('cfg-pix-city').value.trim()
-                    }
-                });
-                toast('Configurações salvas');
-            } catch (err) {
-                $('cfg-error').textContent = err.message || 'Erro ao salvar.';
-            }
-        }
-
-        async function copiarConvite() {
-            const code = currentGroup && currentGroup.inviteCode;
-            if (!code) return;
-            await navigator.clipboard.writeText(code);
-            toast('Código copiado');
-        }
-
-        async function sairDoGrupo() {
-            if (!confirm('Sair deste grupo neste aparelho/conta?')) return;
-            clearListeners();
-            await db.collection('users').doc(currentUser.uid).set({ groupId: null }, { merge: true });
-            userProfile.groupId = null;
-            groupId = null;
-            currentGroup = null;
-            showScreen('group-screen');
-        }
-
-        async function fazerLogout() {
-            clearListeners();
-            await auth.signOut();
-        }
-
-        function gerarPixPayload(chave, nome, cidade, valor) {
-            function tlv(id, val) {
-                const l = String(val).length.toString().padStart(2, '0');
-                return id + l + val;
-            }
-            const gui = tlv('00', 'br.gov.bcb.pix');
-            const mai = tlv('26', gui + tlv('01', chave));
-            let payload = '';
-            payload += tlv('00', '01');
-            payload += mai;
-            payload += tlv('52', '0000');
-            payload += tlv('53', '986');
-            if (valor > 0) payload += tlv('54', Number(valor).toFixed(2));
-            payload += tlv('58', 'BR');
-            payload += tlv('59', (nome || 'RECEBEDOR').substring(0, 25).toUpperCase());
-            payload += tlv('60', (cidade || 'SAO PAULO').substring(0, 15).toUpperCase());
-            payload += tlv('62', tlv('05', '***'));
-            payload += '6304';
-            const bytes = [...payload].map(c => c.charCodeAt(0));
-            let crc = 0xFFFF;
-            for (const b of bytes) {
-                crc ^= b << 8;
-                for (let i = 0; i < 8; i++) {
-                    if (crc & 0x8000) crc = (crc << 1) ^ 0x1021;
-                    else crc <<= 1;
-                    crc &= 0xFFFF;
-                }
-            }
-            payload += crc.toString(16).toUpperCase().padStart(4, '0');
-            return payload;
-        }
-
-        function renderQr(payload) {
-            if (typeof qrcode !== 'function') return;
-            const qr = qrcode(0, 'M');
-            qr.addData(payload);
-            qr.make();
-            $('qr-img').src = qr.createDataURL(6, 4);
-        }
-
-        function gerarResumoEPix() {
-            if (!expenses.length) return;
-            const pix = (currentGroup && currentGroup.pix) || {};
-            if (!pix.chave) {
-                toast('Configure a chave PIX em Grupo');
-                showPage('settings');
-                return;
-            }
-            let total = 0;
-            let detalhes = '';
-            expenses.forEach(g => {
-                total += Number(g.valor) || 0;
-                detalhes += `🔹 ${g.descricao}: R$ ${fmt(g.valor)}\n`;
-            });
-            const n = personCount();
-            const porPessoa = total / n;
-            let texto = `📊 *FECHAMENTO — ${currentGroup.name || 'Grupo'}* 📊\n\n`;
-            texto += `📋 *Despesas:*\n${detalhes}\n`;
-            texto += `💰 *Total: R$ ${fmt(total)}*\n`;
-            texto += `💸 *Por pessoa (÷${n}): R$ ${fmt(porPessoa)}*\n\n`;
-            texto += `🔑 *Chave PIX:* ${pix.chave}\n👤 *Titular:* ${pix.nome || '-'}\n`;
-
-            pixPayloadAtual = gerarPixPayload(pix.chave, pix.nome, pix.cidade, porPessoa);
-            $('pix-code-display').value = pixPayloadAtual;
-            $('texto-grupo').value = texto;
-            renderQr(pixPayloadAtual);
-            $('btn-copy-text').textContent = 'Copiar texto p/ WhatsApp';
-            $('btn-copy-text').classList.remove('copied');
-            $('btn-copy-pix').textContent = 'Copiar Pix Copia e Cola';
-            $('pix-modal').classList.add('active');
-        }
-
-        function fecharModal() { $('pix-modal').classList.remove('active') }
-
-        async function copiarTextoGrupo() {
-            await navigator.clipboard.writeText($('texto-grupo').value);
-            const b = $('btn-copy-text');
-            b.textContent = 'Texto copiado!';
-            b.classList.add('copied');
-            setTimeout(() => { b.textContent = 'Copiar texto p/ WhatsApp'; b.classList.remove('copied') }, 2200);
-        }
-
-        async function copiarPixCopieCola() {
-            await navigator.clipboard.writeText(pixPayloadAtual);
-            const b = $('btn-copy-pix');
-            b.textContent = 'Código PIX copiado!';
-            setTimeout(() => { b.textContent = 'Copiar Pix Copia e Cola' }, 2200);
-        }
-
-        $('pix-modal').addEventListener('click', e => { if (e.target === e.currentTarget) fecharModal() });
-        $('input-descricao').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('input-valor').focus() } });
-        $('input-valor').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); adicionarGasto() } });
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(() => {});
-            });
-        }
-    </script>
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
 </body>
-
 </html>

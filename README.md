@@ -1,32 +1,42 @@
 ﻿# GF Casa Share
 
-App compartilhado para **despesas**, **lista de compras** e **chat** em tempo real (Firebase Auth + Firestore).
+App compartilhado para **despesas**, **lista de compras** e **chat** em tempo real (Firebase Auth + Firestore), com PWA offline e instalável.
 
 ## URLs
 
 - GitHub: https://github.com/thiago20santos21-coder/gf-casa-share
-- App (Firebase Hosting): https://gf-casa-share.web.app
+- App: https://gf-casa-share.web.app
 - Firebase Console: https://console.firebase.google.com/project/gf-casa-share/overview
 
 ## Ativar login (obrigatorio — 1 minuto)
 
-O projeto Firebase ja existe, mas o **Authentication** precisa ser ligado uma vez no console (a API exige Identity Platform com faturamento; no plano Spark e so pelo console):
-
 1. Abra: https://console.firebase.google.com/project/gf-casa-share/authentication
-2. Clique em **Comecar** / **Get started**
+2. Clique em **Comecar**
 3. Em **Sign-in method**, ative **E-mail/senha** e salve
 
-Depois disso, qualquer pessoa cria conta no app, cria/entra em um grupo e ve alteracoes ao vivo.
+## Regra de rateio / PIX
 
-## Como usar
+- Quem **cria o grupo** e o **recebedor** e **nao paga**.
+- O total e dividido **somente entre os demais membros** (pagantes).
+- Labels, texto WhatsApp, valor do PIX e QR usam essa regra.
 
-1. Crie uma conta (e-mail + senha + nome)
-2. **Crie um grupo** (nome + n de pessoas) **ou** entre com o **codigo de convite**
-3. Use as abas:
-   - **Despesas** — rateio + PIX/QR + texto WhatsApp
-   - **Compras** — lista interativa (marcar comprado)
-   - **Chat** — mensagens do grupo
-   - **Grupo** — convite, membros, chave PIX e n de pessoas
+## Offline
+
+- Assets em cache via Service Worker.
+- Escritas offline vao para fila IndexedDB e sincronizam ao reconectar.
+- Indicador **Offline / fila** no topo.
+
+## Instalar no celular
+
+- Banner **Instalar** (Chrome/Android) quando disponivel.
+- iOS: Safari → Compartilhar → **Adicionar a Tela de Inicio**.
+- Icones PNG 192/512 + maskable + apple-touch.
+
+## Notificacoes
+
+- Em **Grupo → Ativar notificacoes**, permita o navegador.
+- Alertas locais (via Service Worker) para nova despesa, item de compra, chat e PIX.
+- Push remoto FCM completo exige certificado Web Push no console (Cloud Messaging → Web Push certificates). Sem isso, as notificacoes funcionam com o app aberto/em segundo plano apos permissao.
 
 ## Deploy
 
@@ -35,16 +45,10 @@ firebase use gf-casa-share
 firebase deploy --only firestore:rules,hosting
 ```
 
-## Desktop (opcional)
-
-```bash
-pip install -r requirements.txt
-python main.py
-```
+Arquivos publicados ficam em `public/`.
 
 ## Stack
 
-- Frontend: HTML/CSS/JS (PWA)
-- Backend: Firebase Auth + Cloud Firestore
-- Hosting: Firebase Hosting
-- Projeto GCP/Firebase: `gf-casa-share`
+- Frontend PWA (`public/`)
+- Firebase Auth + Firestore + Hosting
+- Projeto: `gf-casa-share`

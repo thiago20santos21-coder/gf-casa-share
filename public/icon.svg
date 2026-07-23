@@ -1,11 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="120" fill="#0f0f1a"/>
-  <circle cx="256" cy="256" r="180" fill="url(#grad)" opacity="0.3"/>
-  <text x="256" y="310" font-size="200" font-family="sans-serif" text-anchor="middle" fill="#fff">💸</text>
-  <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6c5ce7"/>
-      <stop offset="100%" stop-color="#00cec9"/>
-    </linearGradient>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="GF Casa Share">
+  <rect width="512" height="512" rx="112" fill="#0b0f14"/>
+  <rect x="72" y="72" width="368" height="368" rx="72" fill="#1e2834"/>
+  <rect x="112" y="112" width="72" height="288" rx="20" fill="#3d9a8b"/>
+  <rect x="220" y="112" width="148" height="148" rx="28" fill="#e8c07d"/>
+  <rect x="220" y="292" width="180" height="18" rx="9" fill="#3d9a8b"/>
+  <rect x="220" y="336" width="180" height="18" rx="9" fill="#e8edf2"/>
+  <rect x="220" y="380" width="180" height="18" rx="9" fill="#8b96a3"/>
 </svg>
